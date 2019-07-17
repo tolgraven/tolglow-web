@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/css/tron-ui.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/codemirror.css" rel="stylesheet" type="text/css">
+  </head>
+  <body style=background-color:#313232;color:#daecf2>
+
+    <header class="navbar navbar-default navbar-static-top" style=background-color:black;color:white>
+      <div class="container" style="background-color:#333435 ; color:#cde">
+        <div class="row">
+          <h3 class="col-md-12">
+            <a href="/index.html">
+              Cue grid test
+            </a>
+          </h1>
+        </div>
+      </div>
+    </header>
+
+    <div class="container" style=background-color:#333435;color:#cde>
+
+      <div class="row" style=background-color:#333435;color:#cde>
+        <div class="col-md-12" style=background-color:#333435;color:#cde>
+          <h4>Cue grid</h2>
+        </div>
+      </div>
+
+      <div class="row" style=background-color:#333435;color:#cde>
+        <div class="col-md-12">
+          <p>
+            Edit the code in the file <code>src/tolglow/web/cue.cljs</code> to edit this shit.
+          </p>
+          <div id="cue-db" style=background-color:#333435;color:#cde>
+            Loading code <i class="fa fa-spinner fa-spin"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/tron-ui.js"></script>
+    <script src="/js/showdown.min.js"></script>
+    <script src="/js/codemirror.js"></script>
+
+    <script src="/js/compiled/app.js" type="text/javascript"></script>
+    <script>
+     jQuery(function() {
+       jQuery('a[data-toggle="tab"]').click(function(e) {
+         e.preventDefault();
+         console.log(e);
+         jQuery(this).tab('show');
+         console.log(jQuery(this));
+       });
+     });
+    </script>
+  </body>
+</html>

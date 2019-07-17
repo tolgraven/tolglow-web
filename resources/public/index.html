@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/css/tron-ui.min.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+
+    <header class="navbar navbar-default navbar-static-top" style=background-color:black>
+      <div class="container">
+        <div class="row">
+          <h1 class="col-md-12">
+            <a href="/index.html">
+              Building cool shit
+            </a>
+          </h1>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="row">
+        <p class="col-md-12">
+          Here be experiments. Just get the stupid repl connection reliable....
+        </p>
+        <pre class="col-md-4"><code> lein repl </code></pre>
+        <p class="col-md-12">
+          Goddamn!
+        </p>
+      </div>
+      <div class="row">
+        <ol class="col-md-12">
+          <li>
+            <h2>Cue lurning</h2>
+            <ul>
+              <li><a href="cue-db.html">Cue b here</a></li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/tron-ui.js"></script>
+    <script src="/js/compiled/app.js" type="text/javascript"></script>
+    <script>
+     jQuery(function() {
+       jQuery('a[data-toggle="tab"]').click(function(e) {
+         e.preventDefault();
+         console.log(e);
+         jQuery(this).tab('show');
+         console.log(jQuery(this));
+       });
+     });
+
+    </script>
+  </body>
+</html>
