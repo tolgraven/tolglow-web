@@ -1,6 +1,13 @@
 (ns tolglow.cue ;fix hehe
   (:require [reagent.core :as r]
-            [re-frame.core :as rf]))
+            [recalcitrant.core :refer [error-boundary]]
+            [re-com.core :as rc ]
+            [re-frame.core :as rf]
+            [tolglow.db :as db]))
+
+
+(defn safe "Wrap whatever with an error boundary"
+ [elem] (r/as-element [(fn [] [error-boundary elem])]))
 
 (def data
  {:cues
@@ -168,8 +175,59 @@
                  :height 100 :width "100%" :border "4px solid #222"}}
   [:span "Inget snack va."]
   [:p (count cues)]
-  (for [cue #_(range 16) cues]
-   (str (:position cue) ",  "))]))
+  (for [cue cues] (str (:position cue) ",  "))]))
+
+
+(defn title []
+  (let [name (rf/subscribe [:whoo])]
+    [rc/title :label (str "Hello from " name #_"me") :level :level1]))
+
+(def selecta (r/atom ""))
+(def slida (r/atom 0))
+
+(defn test-re-con []
+  ;; (safe)
+
+  [rc/h-box :height "50%" :width "25%"
+   :children [(for [y (reverse (range -1 2))]
+               [rc/h-box :size "33%"
+                :children [(for [x (range -1 2)]
+                            [rc/v-box :size "33%" :style {:border "2px solid" :background-color "green"}
+                             :children [[rc/label :label (str x y)]]])] ])]]
+  [rc/v-box
+   :height "100%" :width "80%"
+   :children [[title]
+              [rc/md-icon-button :md-icon-name "zmdi-plus" #_:tooltip #_"this thing"]
+              [rc/md-circle-icon-button :md-icon-name "zmdi-plus" #_:tooltip #_"this thing"]
+              [rc/label :label "DO DO OD"]
+              [rc/info-button :info "WAZAAA"]
+              [rc/title :label "TEST"]
+              [rc/slider :model slida :on-change #(reset! slida %) :min 0 :max 1 :step 0.01 :width "50%"
+               :style {:height "50px"}]
+              [rc/single-dropdown
+               :choices     [{:id 1 :label "One"}
+                             {:id 2 :label "Twoee"}
+                             {:id 3 :label "Sriie"}]
+               :model       nil ;selected-country-id
+               :title?      true
+               :placeholder "Several choice"
+               :width       "300px"
+               :max-height  "400px"
+               :filter-box? false
+               :on-change   #(reset! selecta %)]
+              [:div
+               [:strong "Damn: "]
+               (if (nil? @selecta)
+                "None"
+                (str (:label @selecta ) " [" @selecta "]"))]
+              [rc/button :label "Clicker" :on-click #(swap! selecta inc)
+               :tooltip "HoverMe"]]]
+  [rc/box :size "auto"
+    :children [[rc/md-icon-button :md-icon-name "long-arrow-up"
+                 :tooltip "this thing"]
+               [rc/title :label "TEST"]]])
+
+
 
 (defn ui []
   [:div
