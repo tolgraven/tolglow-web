@@ -25,5 +25,6 @@
  [& force?]
  (rf/reg-event-db :initialize
   (fn [db _] {:cues (:cues data)}))
- (defonce _init (rf/dispatch-sync [:initialize])))
+ (defonce _init (rf/dispatch-sync [:initialize]))
+ (rf/clear-subscription-cache!))
 

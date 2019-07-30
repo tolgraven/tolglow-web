@@ -1,48 +1,74 @@
 (ns tolglow.cue
   (:require [reagent.core :as r]
-            [recalcitrant.core :refer [error-boundary]]
+            ;; [recalcitrant.core :refer [error-boundary]]
             [re-com.core :as rc ]
             [re-frame.core :as rf]
+            [tolglow.core :as core]
             [tolglow.db :as db]))
 
+;; (core/safe ) ;time to try this on...
 
-(rf/reg-event-db :create-cue ;this needs to like send a :cues event as well no? for earlier subs to react...
- (fn [db [_ c]] (update db :cues #(conj c %))))
+(rf/reg-event-db :save-cue ;but like, what's point of re-render if thing is outside our viewport
+ (fn [db [_ cue]] (update db :cues #(conj cue %))))
 (rf/reg-event-db :delete-cue
- (fn [db [_ c]] (update db :cues #(disj % c)))) ;can just delete from list and will be replaced by a dummy. tho bit inefficient to trigger entire process from one dunno
+ (fn [db [_ cue]] (update db :cues (fn [cues] (remove #(= (:id %) (:id cue)) cues))))) ;can just delete from list and will be replaced by a dummy. tho bit inefficient to trigger entire process from one dunno
 
-(rf/reg-sub :cues (fn [db [_ cue-key]] (:cues db [])))
-;;  (fn [db [_ [max-x max-y]]] (:cues db [])))
+(rf/reg-sub :cues (fn [db [_ cue-key]] (:cues db []))) ;;  (fn [db [_ [max-x max-y]]] (:cues db [])))
+(rf/reg-sub :get-cue ;merge with :cues and this is what does with args?
+ (fn [db [_ k arg]] ; like k :id arg :100, k :position arg [0 0]
+  (let [[cue] (filter #(= arg (k %)) (:cues db))]
+  cue #_(or cue {}))))
 
-(rf/reg-sub :cues-padded-blanks
- (fn [[_ max-x max-y]] (rf/subscribe [:cues])) ;idunno could we fwd x y and mod (limit) first fetch at all? sure
- (fn [cues [_ max-x max-y]]
-  (-> cues #_println #_(println max-x)))) ;need to what, sort by position, pad between?
+
+(rf/reg-sub :view (fn [db _ #_[_ pos]] (:view-page db [0 0]))) ;;  (fn [db [_ [max-x max-y]]] (:cues db [])))
+(rf/reg-sub :active
+ (fn [db [_ id-key]]
+  (if id-key
+   (some #{id-key} (:active db))
+   (:active db))))
 
 (rf/reg-event-db :cue-clicked
  (fn [db [_ id-key action-event]]
-  (let [cue (filter #(= (:id %) id-key) (:cues db))
-        click `(parse-input action-event)]
-   (if (some #{id-key} (:active db))
-    (update db :active #(disj % cue))
-    (update db :active #(conj cue %)))))) ;pretty nifty...
+   (let [cue @(rf/subscribe [:get-cue :id id-key])
+        #_click #_(parse-input action-event)
+         hit (:id cue)]
+    (if (nil? hit)
+     db ;start action to add new cue or something? dont forget to return db
+     (update db :active
+              ;; (if (some #{hit} (:active db)) ;avoid conj on nil id
+              (if (or (some #{hit} (:active db)) (nil? hit)) ;howtf does this fix? already checking for nil above...
+                       #(disj (set %) id-key)
+                       #(conj % hit))))))) ;) ;pretty nifty... too nifty for myself. flipped order or it keeps nesting
+;; (rf/reg-event-fx :cue-clicked
+;;  (fn [cofx [_ id-key action-event]]
+;;    ;; (let [[cue] (filter #(= (:id %) id-key) (:cues (:db cofx)))
+;;    (let [cue @(rf/subscribe [:get-cue :id id-key]) ;[cue] (filter #(= (:id %) id-key) (:cues (:db cofx)))
+;;         #_click #_(parse-input action-event)
+;;          hit (:id cue)]
+;;     (if (nil? hit)
+;;      cofx ;start action to add new cue or something? dont forget to return db
+;;      ;; (update db :active
+;;      (update-in cofx [:db :active]
+;;                  (if (or (some #{hit} (cofx :db :active)) (nil? hit)) ;avoid conj on nil id
+;;                           #(disj (set %) id-key)
+;;                           #(conj % hit))))))) ;) ;pretty nifty... too nifty for myself. flipped order or it keeps nesting
 
+(rf/reg-event-db :view-changed
+ (fn [db [_ pos]]
+  (assoc db :view-page pos)))
 
 (defn cue-id-gen [] ;or no atom, init id with db and do it all through there...
- (let [id (r/atom 114)]
-  (fn [] (swap! id inc)
-   @id)))
+ (let [id (atom 114)]
+  #(swap! id inc)))
 (def new-cue-id (cue-id-gen))
 
+(defonce temp-id-counter (atom 114))
+(rf/reg-cofx :temp-cue-id
+  #(assoc % :temp-cue-id (swap! temp-id-counter inc))) ;I mean this wont make below work tho...
+; still need either of above for proper cue ids
 (defn create-blank-cue [x y] ;or can we do :id :none?
- {:id (keyword (str (new-cue-id))) :color "#575757" :text "" :position [x y] :fx nil})
+ {:id (keyword (str (new-cue-id))) :color "#282f32" :position [x y]})
 
-(rf/reg-sub :cue-at
- (fn [db [x y]]
-   (let [cue (filter #(= [x y] (:position %)) (:cues db))]
-    (if (some? cue) cue (create-blank-cue x y))))) ;not sure what's wrong with this...
-
-(def page (r/atom [0 0]))
 
 (defn cue-cell [{:keys [color id] :as cue}]
  (let [s (r/atom cue)
@@ -140,48 +166,53 @@
 
 
 (defn nav-btn "Single button"
- [x-move y-move s]
+ [x-move y-move view-sub]
  [:td
-  {:style {:text-align :center :height 60 :width 80 :padding 10
+  {:style {:text-align :center :height 40 :width 70 :padding 10
            :border "3px solid #789" :display :table-cell}
-   :on-click (fn []
-              (swap! page (fn [pos]
-                           (map #(if (<= 0 (+ %1 %2)) (+ %1 %2) 0)
-                                pos [x-move y-move])))
-              (rf/dispatch [:view-change @page]))}
-  (str x-move " " y-move)])  ;for now. fix a nice arrow and rotate somehow
+   :on-click (fn [e] ;should go straight to dispatch...
+              (rf/dispatch [:view-changed
+                            (map #(if (<= 0 (+ %1 %2)) (+ %1 %2) 0)
+                                 @view-sub [x-move y-move])]))}
+  (if (= x-move y-move 0) ;middle button shows pos
+   (str @view-sub) "")])  ;for now. fix a nice arrow and rotate somehow
 
-(defn nav-btns "Buttons to change page" [s]
-  (fn []
-  [:div
-    [:table.nav-btns {:style {:background-color "#282828" } }
-    [:tbody
-     (for [y (reverse (range -1 2))]
-      [:tr (for [x (range -1 2)]
-        [nav-btn x y s])])]]])) ; :arrow-left :arrow-right :arrow-bottom :arrow-left-bottom :arrow-right-top :long-arrow-up :long-arrow-down
-; uhh rest? also what about just rotating one?
+(defn nav-btns "Buttons to change page" [& [pos]]
+  (let [view-sub (rf/subscribe [:view])] ;but i guess first push pos if non-0 0
+   (fn [& [pos]]
+    [:div
+     [:table.nav-btns {:style {:background-color "#282828" } }
+      [:tbody
+       (for [y (reverse (range -1 2))]
+        [:tr (for [x (range -1 2)]
+              [nav-btn x y view-sub])])]]]))) ; :arrow-left :arrow-right :arrow-bottom :arrow-left-bottom :arrow-right-top :long-arrow-up :long-arrow-down
 
+(rf/reg-event-db :inc-done (fn [db [_ nr]] (update db :done #(if (> 100 (+ (or % 0) nr)) (+ (or % 0) nr) 0))))
+(rf/reg-sub :done (fn [db _] (:done db)))
+(def _interval2 (js/setInterval #(rf/dispatch-sync [:inc-done 1]) 500))
 
 (defn header-bar []
- (let [cues @(rf/subscribe [:cues])]
+ (let [cues (rf/subscribe [:cues])
+       active (rf/subscribe [:active])
+       progress (rf/subscribe [:done])]
   [:div {:style {:font-size 14 :line-height 1.4
                  :background-color "#303031" :color "#bcd"
                  :height 100 :width "100%" :border "4px solid #222"}}
-  [:span "Inget snack va."]
-  [:p (count cues)]
-  (for [cue cues] (str (:position cue) ",  "))]))
+  [:p (count @cues) "/" @sizer]
+  [:span @active]
+  ;; [rc/single-dropdown ]
+  #_[rc/progress-bar :model progress :striped? true
+   :style {:color "#567" :background-color "#222" :transition "0.5s"}]
+  ;; [rc/popover-tooltip]
+  ;; [rc/popover-border]
+  #_(for [cue @cues] (str (:position cue) ",  ")) ]))
 
-
-(defn title []
-  (let [name (rf/subscribe [:whoo])]
-    [rc/title :label (str "Hello from " name #_"me") :level :level1]))
 
 (def selecta (r/atom ""))
 (def slida (r/atom 0))
 
-(defn test-re-con []
+(defn test-re-com []
   ;; (safe)
-
   [rc/h-box :height "50%" :width "25%"
    :children [(for [y (reverse (range -1 2))]
                [rc/h-box :size "33%"
@@ -190,14 +221,11 @@
                              :children [[rc/label :label (str x y)]]])] ])]]
   [rc/v-box
    :height "100%" :width "80%"
-   :children [[title]
-              [rc/md-icon-button :md-icon-name "zmdi-plus" #_:tooltip #_"this thing"]
-              [rc/md-circle-icon-button :md-icon-name "zmdi-plus" #_:tooltip #_"this thing"]
-              [rc/label :label "DO DO OD"]
-              [rc/info-button :info "WAZAAA"]
-              [rc/title :label "TEST"]
-              [rc/slider :model slida :on-change #(reset! slida %) :min 0 :max 1 :step 0.01 :width "50%"
-               :style {:height "50px"}]
+   :children [#_[rc/md-icon-button :md-icon-name "zmdi-plus" #_:tooltip #_"this thing"]
+              ;; [rc/info-button :info "WAZAAA"]
+              [rc/slider :model slida :style {:height "50px"}
+               :on-change #(reset! slida %)
+               :min 0 :max 1 :step 0.01 :width "90%"]
               [rc/single-dropdown
                :choices     [{:id 1 :label "One"}
                              {:id 2 :label "Twoee"}
@@ -214,23 +242,19 @@
                (if (nil? @selecta)
                 "None"
                 (str (:label @selecta ) " [" @selecta "]"))]
-              [rc/button :label "Clicker" :on-click #(swap! selecta inc)
-               :tooltip "HoverMe"]]]
-  [rc/box :size "auto"
-    :children [[rc/md-icon-button :md-icon-name "long-arrow-up"
-                 :tooltip "this thing"]
-               [rc/title :label "TEST"]]])
 
+              [rc/button :label "Clicker" :on-click #(swap! selecta inc)
+               :tooltip "put into"]]])
 
 
 (defn ui []
   [:div
-   ;; [header-bar]
+   [header-bar]
    [cue-grid]
    [:p]
-   [nav-btns page]
-   #_[test-re-con]])  ;could even send s along and have it swapped from there?
+   [nav-btns #_page]
+   [test-re-com]])  ;could even send s along and have it swapped from there?
 
 (when-some [el (js/document.getElementById "cue-db")]
-  (defonce _init (rf/dispatch-sync [:initialize]))
+  (db/init)
   (r/render [ui] el))
