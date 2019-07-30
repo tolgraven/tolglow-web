@@ -44,80 +44,99 @@
 
 (def page (r/atom [0 0]))
 
-;;   [:div>p>b "Nested Element"]
-;;   ->
-;;   [:div
-;;     [:p
-;;       [:b "Nested Element"]]]
-
-(defn cue-cell [{:keys [color id] :as cue-data}]
- (let [s (r/atom cue-data)
-       toggle (fn [k & force?] (swap! s update k #(or (first force?) (not %))))]
+(defn cue-cell [{:keys [color id] :as cue}]
+ (let [s (r/atom cue)
+       ;; cue-sub (rf/subscribe [:get-cue :id id]) ;eh no lol. shiet non-dummy ones lack pos id etc
+       toggle (fn [k & [force?]] (swap! s update k #(or force? (not %))))
+       a? #(:active @s)]
   (fn []
-    [:td
-     {:style
-      {:box-shadow (str "1px 1px 6px 3px #345") ;how alpha?
-       ;; :outline (str "solid 4px " color) ;; :outline (str "solid 4px #282828" )
-       :border (str "1px solid #111") ;cant use dyn color it seems...
-       :color :white, :background-color #_color (if (:active @s) "#434a51" color) ;(cond->        #_color (@s :hovered)  #_(-> % (brighten 15%) (saturate 10%)) (@s :active)   #_(-> % (lighten 25%)) ;etc, other states: would kill other cue (way [too] faded in curr AG), maybe like "about to be included in new macro", a? color)
-       :width (* 60 (if (:hovered @s) 0.95 1.0)), :max-width 100 ;in AG max 100 but resizing cells jump from 90 to 116?? and max 142. no zoom
-       :height (* 50 (if (:active @s) 1.15 1.0)), :max-height 70
-       :transition "0.8s"
-       :font-size "60%"
-       :visibility (if (:fx @s) :visible :hidden)
-       :text-align "center" :word-wrap :break-word, :overflow :hidden
-       :display :table-cell ;:flex no  ;:grid no table-cell, etc. w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
-       :margin-left 5, :margin-top 5, :padding 5} ;; :position :relative
-      :on-mouse-over (fn [e] (toggle :hovered true))
-      :on-mouse-out  (fn [e] (toggle :hovered false))
-      :on-click      (fn [e] (toggle :active) ;or we just dispatch and then sub or will everything get redrawn too much then?
-                      (rf/dispatch [:cue-clicked id e]))} ;"handle right click, shift click, anything else?")}
-     (:text cue-data) #_(:id cue-data)])))
+   (let [style
+         {:box-shadow (str "4px 3px 10px 3px rgb(30, 30, 30, 0.5)")
+          ;; :outline (str "solid 4px " color) ;; :outline (str "solid 4px #282828" )
+          ;; :border (str (if (a?) "3px" "1px") "solid #111") ;cant use dyn color it seems...
+          :border (str (if (a?) "2px" "1px") " solid " "rgb(11, 11, 11, 0.4)") ;cant use dyn color it seems...
+          :border-radius (if id "10px" "1px")
+          :color :white ;XXX should auto calc complement like in afterglow
+          :background-color (if (a?) "#333a41" (if color color "#282f32")) ;(cond->        #_color (@s :hovered)  #_(-> % (brighten 15%) (saturate 10%)) (@s :active)   #_(-> % (lighten 25%)) ;etc, other states: would kill other cue (way [too] faded in curr AG), maybe like "about to be included in new macro", a? color)
+          :background-image (if-not (a?) (str "linear-gradient(rgb(30, 30, 45, 0.4), " color ")")
+                             color)
+          :width (* 60 (if (:hovered @s) 1.25 1.0)), :max-width 100 ;in AG max 100 but resizing cells jump from 90 to 116?? and max 142. no zoom
+          :height (* 50 (if (:active @s) 1.00 1.0)), :max-height 70
+          ;; :width (* 60 (if (:hovered @s) 0.90 1.0)), :max-width 100 ;in AG max 100 but resizing cells jump from 90 to 116?? and max 142. no zoom
+          ;; :height (* 50 (if (:active @s) 0.95 1.0)), :max-height 70
+          :cursor :pointer
+          :transition "0.8s"
+          :font-size "60%"
+          :align :center
+          ;; :visibility (if (:fx @s) :visible :hidden)
+          :word-wrap :break-word
+          ;; :display :table-cell ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
+          ;; :display (if (:hovered @s) :inline-block :table-cell) ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
+          ;; :display (if (a?) :inline-block :table-cell) ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
+          ;; :box-sizing (if (:hovered @s) :border-box )
+          }]
+   [:td
+    {:style style
+     :on-mouse-over (fn [e] (toggle :hovered true))
+     :on-mouse-out  (fn [e] (toggle :hovered false))
+     :on-click      (fn [e] (toggle :active) ;or we just dispatch and then sub or will everything get redrawn too much then?
+                     (rf/dispatch [:cue-clicked (:id cue) e])) ;"handle right click, shift click, anything else?")}
+     }
+     #_[rc/button :label (:text cue "")
+               :tooltip (:id cue "nope")
+               :style style]
+     ;; [rc/info-button :info (str (:id cue "no")) :color "red"]
+     ;; [rc/info-button :info "yo" ]
+     ;; [rc/box
+     ;;  ;; :child [rc/close-button :tooltip "X" :color "red"]]
+     ;;  ;; :child [rc/p :label "eh" :tooltip "X" :color "red"]]
+     ;;  :child [rc/border :child [rc/p "X"]]]
+     (:text cue)
+     [rc/title :label (:id cue) :style {:color "black" :font-size "40%" :line-height "1.0"}]]))))
+
 
 (defn cue-row [cues & {:keys [wrap-tag cell-tag style]}] ;doesn't need to know location of self, just draws...
- (fn [] ; :tbody, or :thead for top, or notthing?. any case looks like individual wraps work as well as whole table...
-  (let [row [:tr {:style style}
-             (doall
-              (for [cue cues]
-               (if cell-tag ;manual cell...
-                [cell-tag cue]
-                ^{:key (:id cue)}[cue-cell cue])))] ]
+ ; :tbody, or :thead for top, or notthing?. any case looks like individual wraps work as well as whole table...
+  (let [row [:tr {:style style} ;why centering not working for :th but is for :td?
+             (doall (map-indexed  ;if want to abandon dummy cue route, how do I still render rest of table?
+               (fn [i cue]
+                (if cell-tag ;manual cell...
+                 [cell-tag cue]
+                 ^{:key (str "cue-cell-" i "-" (:id cue))} ;UGH
+                 [cue-cell cue])) ;could/should the ID crap be in cue-cell instead tho?
+               cues))]] ;could/should the ID crap be in cue-cell instead tho?
    (if wrap-tag
     [wrap-tag row]
-    row))))
+    row)))
 
-(defn cue-page [page-xy] ;where is page located on larger grid?
- (let [[cell-x cell-y] (map #(* 8 %) page-xy)
-       cues @(rf/subscribe [:cues]) ;should be limited to those on curr page
-       dummies (vec (doall (for [y (range 8) x (range 8)] ; y/x since we do by row
-                            (create-blank-cue x y)))) ;wanna go this approach since need to be able to handle on the fly creation and destruction anyways...
-       idx-for-xy (fn [[x y]] (+ x (* 8 y))) ;this is to find index in monovector but should prob group em up earlier yet or?
-       rows (->> (reduce
-                  (fn [grid cue]
-                   (assoc grid (idx-for-xy (:position cue)) cue))
-                  dummies cues)
-                 (partition 8)
-                 reverse)]
-  (fn [] [:tbody (doall (for [row rows] [cue-row row]))])))
+(defn cue-page [page-xy & {:keys [size offset] :or {size 8 offset [0 0]}}] ;where is page located on larger grid? what's zoom level?
+ (let [[x y] (map #(+ %1 (* size %2)) offset page-xy #_@view)
+       [end-x end-y] (map #(+ size %) [x y])
+       rows (->> (for [y (range y end-y) x (range x end-x)] ; y/x since we do by row
+                  @(rf/subscribe [:get-cue :position [x y]]))
+                 vec (partition size) reverse)] ;table starts from up, cue grid down
+  [:tbody (doall (for [row rows] [cue-row row]))]))
 
-(defn cue-grid "Viewcontroller for [cue-page]" [page-data]
- (let [s (r/atom {:view [0 0]})
-       view (rf/subscribe [:view])] ;so do we only have one grid and swap in and out cue-rects to simulate changing
+(defonce sizer (r/atom 8))
+
+(defn cue-grid "Viewcontroller for [cue-page]" [#_page-data]
+ (let [view (rf/subscribe [:view])
+       size (rf/subscribe [:size])] ;so do we only have one grid and swap in and out cue-pages to simulate changing
   ; or do we have many instances of cue-page all ready to go? wanting other views than 8x8 sounds possible so making it super dynamic (if works performance-wise) soudns good
   ; also simplifies a bit if what is dispayed is what "exists", no throttling state updates for stuff out of view or whatever - it doesnt concern us until it does
   (fn []
-   (let [#_(:view @s)]
-    [:table.cue-grid
-     {:style {:width "100%" :text-align "center" ;"left" ;why do we need that?
-              :border "2px solid #789" :background-color #_"hsl(20, 60%, 50%)" "#333"
-              :overflow :hidden}}
-     [cue-row (range 1 9) :wrap-tag :thead :cell-tag :th ;top
-      :style {:text-align "center"}] ;align no work. also the unique ID thing. send along a more exact cell spec?
+   [rc/box :child
+    [rc/scroller :size "50%" :scroll :on
+     :child [:table.cue-grid
+    {:style {:width "100%" :text-align "center" ;"left" ;why do we need that?
+             :border "2px solid #789" :background-color "#333"
+             :table-layout :fixed
+             :overflow :hidden}}
+    [cue-row (range 1 9) :wrap-tag :thead :cell-tag :th {:text-align "center !important"}] ;align no work. also the unique ID thing. send along a more exact cell spec?
 
-     [cue-page @page]
+    [cue-page @view :size @sizer :offset [0 0]] ;; [cue-page [0 0] @sizer [0 0]] [cue-page]
 
-     [cue-row (range 1 9) :wrap-tag :tbody :cell-tag :td ;bottom
-      :style {:text-align "center"}] ]) )))
+    [cue-row (range 1 9) :wrap-tag :tbody :cell-tag :td] ]]] ))) ;bottom
 
 
 (defn nav-btn "Single button"
