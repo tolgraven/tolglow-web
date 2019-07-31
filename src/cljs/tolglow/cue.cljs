@@ -55,9 +55,6 @@
       {:db db
        :dispatch [action-event]}))))) ;not impure now. but need to figure out how to set stuff up... but bit by bit (filter null, handle toggle: more serious op? pass down. yeah?)
 
-(rf/reg-event-db :view-changed
- (fn [db [_ pos]]
-  (assoc db :view-page pos)))
 
 (defn cue-id-gen [] ;or no atom, init id with db and do it all through there...
  (let [id (atom 114)]
@@ -68,59 +65,50 @@
 (rf/reg-cofx :temp-cue-id
   #(assoc % :temp-cue-id (swap! temp-id-counter inc))) ;I mean this wont make below work tho...
 ; still need either of above for proper cue ids
-(defn create-blank-cue [x y] ;or can we do :id :none?
- {:id (keyword (str (new-cue-id))) :color "#282f32" :position [x y]})
+;; (defn create-blank-cue [x y] ;or can we do :id :none?
+;;  {:id (keyword (str (new-cue-id))) :color "#282f32" :position [x y]})
+(rf/reg-cofx :gen-react-key
+  (fn[] #_hmm))
 
 
+; oh yeah will have to make use of same stuff to replicate push functionality
+; (color picker on grid etc) on web!
+; basically reimplement existing functionality but now with non-shit code -> easy to then keep adding
 (defn cue-cell [{:keys [color id] :as cue}]
  (let [s (r/atom cue)
-       ;; cue-sub (rf/subscribe [:get-cue :id id]) ;eh no lol. shiet non-dummy ones lack pos id etc
        toggle (fn [k & [force?]] (swap! s update k #(or force? (not %))))
-       a? #(:active @s)]
+       a? #(:active @s)
+       [mouse-over mouse-out] (map #(fn [e] (toggle :hovered %)) [true false])
+       on-click (fn [e]
+                 (if (seq cue) (toggle :active)) ;or we just dispatch and then sub or will everything get redrawn too much then?
+                 (rf/dispatch [:cue-interacted (:id cue) "click"]))]
   (fn []
    (let [style
-         {:box-shadow (str "4px 3px 10px 3px rgb(30, 30, 30, 0.5)")
+         {:box-shadow (str "4px 3px 10px 3px rgb(50, 50, 30,  0.3)")
           ;; :outline (str "solid 4px " color) ;; :outline (str "solid 4px #282828" )
-          ;; :border (str (if (a?) "3px" "1px") "solid #111") ;cant use dyn color it seems...
-          :border (str (if (a?) "2px" "1px") " solid " "rgb(11, 11, 11, 0.4)") ;cant use dyn color it seems...
+          :border (str (if (a?) "3px" "1px") " solid " "rgb(31, 31, 31, 0.4)") ;cant use dyn color it seems...
           :border-radius (if id "10px" "1px")
           :color :white ;XXX should auto calc complement like in afterglow
-          :background-color (if (a?) "#333a41" (if color color "#282f32")) ;(cond->        #_color (@s :hovered)  #_(-> % (brighten 15%) (saturate 10%)) (@s :active)   #_(-> % (lighten 25%)) ;etc, other states: would kill other cue (way [too] faded in curr AG), maybe like "about to be included in new macro", a? color)
-          :background-image (if-not (a?) (str "linear-gradient(rgb(30, 30, 45, 0.4), " color ")")
+          :background-color (if (a?) "rgb(200, 200, 200, 0.4)" (if color color "#282f32")) ;(cond->        #_color (@s :hovered)  #_(-> % (brighten 15%) (saturate 10%)) (@s :active)   #_(-> % (lighten 25%)) ;etc, other states: would kill other cue (way [too] faded in curr AG), maybe like "about to be included in new macro", a? color)
+          ;; :background-color (if (a?) "rgb(100, 100, 100, 0.3)" (if color color "#282f32")) ;(cond->        #_color (@s :hovered)  #_(-> % (brighten 15%) (saturate 10%)) (@s :active)   #_(-> % (lighten 25%)) ;etc, other states: would kill other cue (way [too] faded in curr AG), maybe like "about to be included in new macro", a? color)
+          :background-image (if-not (a?) (str "linear-gradient(-30deg, rgba(130, 130, 145, 0.3), " color ")")
                              color)
           :width (* 60 (if (:hovered @s) 1.25 1.0)), :max-width 100 ;in AG max 100 but resizing cells jump from 90 to 116?? and max 142. no zoom
           :height (* 50 (if (:active @s) 1.00 1.0)), :max-height 70
-          ;; :width (* 60 (if (:hovered @s) 0.90 1.0)), :max-width 100 ;in AG max 100 but resizing cells jump from 90 to 116?? and max 142. no zoom
-          ;; :height (* 50 (if (:active @s) 0.95 1.0)), :max-height 70
           :cursor :pointer
-          :transition "0.8s"
+          :transition "0.7s"
           :font-size "60%"
           :align :center
           ;; :visibility (if (:fx @s) :visible :hidden)
           :word-wrap :break-word
-          ;; :display :table-cell ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
+          :display :table-cell ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
           ;; :display (if (:hovered @s) :inline-block :table-cell) ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
-          ;; :display (if (a?) :inline-block :table-cell) ; w3schools.com/cssref/pr_class_display.asp :display :inline-block ;everything ends up in same :td with this...
-          ;; :box-sizing (if (:hovered @s) :border-box )
           }]
    [:td
     {:style style
-     :on-mouse-over (fn [e] (toggle :hovered true))
-     :on-mouse-out  (fn [e] (toggle :hovered false))
-     :on-click      (fn [e] (toggle :active) ;or we just dispatch and then sub or will everything get redrawn too much then?
-                     (rf/dispatch [:cue-clicked (:id cue) e])) ;"handle right click, shift click, anything else?")}
-     }
-     #_[rc/button :label (:text cue "")
-               :tooltip (:id cue "nope")
-               :style style]
-     ;; [rc/info-button :info (str (:id cue "no")) :color "red"]
-     ;; [rc/info-button :info "yo" ]
-     ;; [rc/box
-     ;;  ;; :child [rc/close-button :tooltip "X" :color "red"]]
-     ;;  ;; :child [rc/p :label "eh" :tooltip "X" :color "red"]]
-     ;;  :child [rc/border :child [rc/p "X"]]]
+     :on-mouse-over mouse-over :on-mouse-out  mouse-out :on-click on-click} ;"handle right click, shift click, anything else?")}
      (:text cue)
-     [rc/title :label (:id cue) :style {:color "black" :font-size "40%" :line-height "1.0"}]]))))
+     #_[rc/title :label (:id cue) :style {:color "black" :font-size "40%" :line-height "1.0"}]]))))
 
 
 (defn cue-row [cues & {:keys [wrap-tag cell-tag style]}] ;doesn't need to know location of self, just draws...
@@ -145,117 +133,217 @@
                  vec (partition size) reverse)] ;table starts from up, cue grid down
   [:tbody (doall (for [row rows] [cue-row row]))]))
 
-(defonce sizer (r/atom 8))
 
 (defn cue-grid "Viewcontroller for [cue-page]" [#_page-data]
- (let [view (rf/subscribe [:view])
-       size (rf/subscribe [:size])] ;so do we only have one grid and swap in and out cue-pages to simulate changing
+ (let [[page offset size :as view] (map (fn [k default] (rf/subscribe [:view k default]))
+                                              [:page :offset :size] [[0 0] [0 0] 8])] ;so do we only have one grid and swap in and out cue-pages to simulate changing
   ; or do we have many instances of cue-page all ready to go? wanting other views than 8x8 sounds possible so making it super dynamic (if works performance-wise) soudns good
   ; also simplifies a bit if what is dispayed is what "exists", no throttling state updates for stuff out of view or whatever - it doesnt concern us until it does
-  (fn []
-   [rc/box :child
-    [rc/scroller :size "50%" :scroll :on
-     :child [:table.cue-grid
-    {:style {:width "100%" :text-align "center" ;"left" ;why do we need that?
-             :border "2px solid #789" :background-color "#333"
-             :table-layout :fixed
-             :overflow :hidden}}
-    [cue-row (range 1 9) :wrap-tag :thead :cell-tag :th {:text-align "center !important"}] ;align no work. also the unique ID thing. send along a more exact cell spec?
-
-    [cue-page @view :size @sizer :offset [0 0]] ;; [cue-page [0 0] @sizer [0 0]] [cue-page]
-
-    [cue-row (range 1 9) :wrap-tag :tbody :cell-tag :td] ]]] ))) ;bottom
+  [rc/box :child [rc/scroller :size "50%" :scroll :on
+    :child ;no go lols
+    [:table.cue-grid
+     {:style {:width "100%" :text-align "center" ;why do we need that?
+              :border "2px solid #789" :background-color "#333"
+              :table-layout :fixed :overflow :hidden}}
+     [cue-row (range 1 9) :wrap-tag :thead :cell-tag :th :style {:text-align "center !important"}] ;align no work. also the unique ID thing. send along a more exact cell spec?
+     [cue-page @page :size @size :offset @offset]
+     [cue-row (range 1 9) :wrap-tag :tbody :cell-tag :td] ]]] )) ;bottom
 
 
-(defn nav-btn "Single button"
- [x-move y-move view-sub]
+(defn nav-btn "Draw one navigation button"
+ [x-move y-move target-sub target-key]
  [:td
-  {:style {:text-align :center :height 40 :width 70 :padding 10
-           :border "3px solid #789" :display :table-cell}
+  {:style {:text-align :center :height 30 :width 30 #_:border #_"3px solid #678" }
    :on-click (fn [e] ;should go straight to dispatch...
-              (rf/dispatch [:view-changed
+              (rf/dispatch [:view-changed target-key
                             (map #(if (<= 0 (+ %1 %2)) (+ %1 %2) 0)
-                                 @view-sub [x-move y-move])]))}
-  (if (= x-move y-move 0) ;middle button shows pos
-   (str @view-sub) "")])  ;for now. fix a nice arrow and rotate somehow
+                                 @target-sub [x-move y-move])]))}
+  (let [[x y] @target-sub]
+   (if (= x-move y-move 0) ;middle button shows pos
+    (str x "  " y)
+    [rc/md-icon-button :md-icon-name "zmdi-arrow-left" ;:tooltip "hmm"
+     :style {:display :inline-block :font-size 18
+             :transform (str "rotate(" (+ (* 45 x-move) (* 90 y-move) (if (and (= -1 x-move) (>= 0 y-move)) 45)) "deg)")}]))])
+     ;haha close enough almost
 
-(defn nav-btns "Buttons to change page" [& [pos]]
-  (let [view-sub (rf/subscribe [:view])] ;but i guess first push pos if non-0 0
-   (fn [& [pos]]
-    [:div
-     [:table.nav-btns {:style {:background-color "#282828" } }
-      [:tbody
-       (for [y (reverse (range -1 2))]
-        [:tr (for [x (range -1 2)]
-              [nav-btn x y view-sub])])]]]))) ; :arrow-left :arrow-right :arrow-bottom :arrow-left-bottom :arrow-right-top :long-arrow-up :long-arrow-down
+(defn nav-btns "Buttons to move viewport" [target-key] ; :page, :offset...
+  (let [target-sub (rf/subscribe [target-key])] ;but i guess first push pos if non-0 0
+   [:div>table.nav-btns>tbody {:style {:background-color "#282828"}}
+    (for [y (reverse (range -1 2))]
+     [:tr (for [x (range -1 2)]
+           [nav-btn x y target-sub target-key])])]))
 
-(rf/reg-event-db :inc-done (fn [db [_ nr]] (update db :done #(if (> 100 (+ (or % 0) nr)) (+ (or % 0) nr) 0))))
+
+(defn sync-sources []
+ (let [sources (rf/subscribe [:sync-sources])]
+  [:div
+   [:span "Tempo sync"]
+   [rc/single-dropdown
+     :choices     @sources :model       nil
+     :placeholder "No sync" :title?      true
+     :width       "30%" ;:max-height  "300px" :filter-box? true
+     :style {:border "3px solid #789" :background-color "#222"}
+     :on-change   #(rf/dispatch [:set-sync %])]]))
+
+
+(defn row-button
+ [row-id action mouse-over-row?]
+   #_[rc/button :label action :tooltip (str row-id action) ;reg button does work!
+              :style {:box-shadow (str "8px 6px 10px 5px rgb(50, 50, 30, 0.3)") :border-radius "40px"
+                      :font-size 10
+                      :visibility (if mouse-over-row? :visible :hidden)
+                      :line-height "1.0em" :vertical-align :center
+                      ;; :height "50%" :padding "10px 10px" :width 20  #_:background-color #_"rgb(50, 50, 50, 0.5)"}
+                      :height 20 :width 45 :padding "5px 5px"  #_:background-color #_"rgb(50, 50, 50, 0.5)"}
+              :on-click (fn [e] (rf/dispatch [:cue-interacted row-id action]))]
+ [rc/row-button
+  :md-icon-name    (str "zmdi zmdi-" action) ;must be something wrong with my font css file? it's there tho, and sourced in the html
+  :mouse-over-row? mouse-over-row?
+  :style   {:color "white" :font-size 32 :box-shadow (str "8px 6px 10px 5px rgb(50, 50, 30, 0.3)")}
+  :on-click        #(rf/dispatch [:cue-interacted row-id action])])
+
+(defn row-buttons
+  [row-id mouse-over]
+  (let [mouse-over-row? (identical? @mouse-over row-id)]
+    [rc/v-box :align :start :gap "10px"
+              ;; :attr {:on-mouse-over (rc/handler-fn (reset! mouse-over row-id))
+              ;;        :on-mouse-out  (rc/handler-fn (reset! mouse-over nil))}
+     :children  [[rc/h-box ;; :class    "rc-div-table-row" ;oh yeah set some base classes btw
+                  :children (mapv (fn [action]
+                                   [row-button row-id action mouse-over-row?])
+                                  ["save" "edit" "delete"]) ]]]))
+
+
+
+(rf/reg-event-db :inc-done
+ (fn [db [_ nr]]
+  (update db :done #(if (> 100 (+ (or % 0) nr)) (+ (or % 0) nr) 0))))
 (rf/reg-sub :done (fn [db _] (:done db)))
-(def _interval2 (js/setInterval #(rf/dispatch-sync [:inc-done 1]) 500))
+;; (defonce _interval2 (js/setInterval #(rf/dispatch-sync [:inc-done 1]) 500)) ;so would set up intervals to match bpm?
+
+(defn beat-viz "maybe three progress bars showing beat/bar/phrase progress?" []
+ (let [progress (rf/subscribe [:done])] ;so this should be ok with sub, no form2 needed. but setInterval is fucked?
+ [rc/progress-bar :model progress :striped? true
+   :style {:color "#567" :background-color "#222" #_:transition #_"0.1s"}]))
+
+(rf/reg-cofx :start-value
+  #(assoc % :start-value (rand-int 100)))
+
+(rf/reg-sub :cue-var-value
+  (fn [db [_ cue-var]]
+    (or (get-in db [:cue-vars (keyword (:name cue-var))] ) ;test...
+        (:max cue-var)
+        (:starting cue-var)
+        (rand-int (:max cue-var))
+        0)))
+(rf/reg-event-db :cue-var-set
+ (fn [db [_ cue-var v]] (assoc-in db [:cue-vars (keyword (:name cue-var))] v))) ;makes sense if they all have ids? and they do in afterglow, when running anyways
+;;  (fn [db [_ cue-var v]] (update-in db [:cues] (:name cue-var)] v))) ;makes sense if they all have ids? and they do in afterglow, when running anyways
+; yeah we're gonna need a map for this...
+
+(defn cue-var-control [cue-var] ;fair play they rerender when others get moved but why is atom being recreated?
+ (let [start (rf/subscribe [:cue-var-value cue-var])]
+ (fn [cue-var]
+  [:tr.cue-var-control
+   [:td (:name cue-var)]
+   [:td (condp = (:type cue-var)
+         ;; :number (prefab/slider
+         ;;          #js {:defaultValue [0, 100] :withBars true})
+         :number [rc/slider :model start :style {:height "30px" :width "200px" :max-width "300px"}
+                  :on-change (fn [v]
+                              ;; (reset! current v)
+                              (rf/dispatch [:cue-var-set cue-var v])) #_(fn [_] )
+                  :min (:min cue-var 0) :max (:max cue-var 100) :step 1 :width "100%"]
+         :ratio [:p "Like make something with boxes?"]
+         :color (prefab/slider-picker
+                  #js {;:width 268 :height 130 :background-color "#2C3C44"
+                       :onChangeComplete (fn [color event]
+                                          (println "color: " color)
+                                          (rf/dispatch [:cue-var-set cue-var (:hex color)])
+                                          #_(reset! current color))})
+                  ;also make sure new color reflected yo...
+
+         ;; :xy-pad [:make :self! :just a box and watch cursor pos when over?]
+         #_(prefab/swatches-picker
+                  #js {:width 268 :height 130 :background-color "#2C3C44"
+                       :onChangeComplete (fn [color event]
+                                          (println "color: " color)
+                                          (rf/dispatch [:cue-var-set cue-var color])
+                                          (reset! current color))})
+         :space (str "xyz")
+         "dunno type")]
+   [:td (str @start)]]
+  ; different depending on var type, settings etc. colorpicker, beat fraction ui,
+  ; knob, slider, xy...
+  ; quil for doing waveform visualizer like on push
+  )))
+
+(defn effect-row "Render one active cue/effect" []
+ (let []
+  ))
+
+
+(defn active-effects []
+ (let [active (rf/subscribe [:active])
+       mouse-over (r/atom nil)] ;for now
+  [:div
+   [:table.cue-list
+   {:style {:border "4px solid #222" :padding "10px 10px" ;:margin 10
+            :text-align :center
+            :background-color "#444" :color "#bcd"
+            :table-layout :fixed
+            :width "100%" :height "100%"
+            :transition "0.3s"}}
+   [cue-row ["Pos", "Name",  "Gizmos", "", "", "Buttons"]
+    :wrap-tag :thead :cell-tag :th] ;align no work. also the unique ID thing. send along a more exact cell spec?
+   [:tbody
+    (doall (for [cue-id @active :let [cue @(rf/subscribe [:get-cue :id cue-id])]] ;i take it this is too ez to not go cpu hogging
+           [:tr {:attr {:on-mouse-over (rc/handler-fn (reset! mouse-over cue-id))
+                        :on-mouse-out  (rc/handler-fn (reset! mouse-over nil))} ;attr in tr went from seeing on cell hover to item hover heh... dont understand
+                 :style {:background-color (:color cue)
+                         :background-image (str "linear-gradient(rgb(50, 50, 65, 0.35), " (:color cue) ")")}}
+            ;; [:td [rc/checkbox :style {:visibility :hidden}]] ;macro bull
+            [:td.col1 (str (:position cue))]
+            [:td.col2 (str (:text cue))]
+            [:table>tbody {:style {:background-color (:color cue)}}
+             [:div (doall (for [cue-var (:variables cue) ]
+                           ^{:key (str "cue-var-" (:id cue) "-" (:name cue-var))}
+                           [cue-var-control cue-var]))]]
+            [:td.col4] [:td.col5]
+            [:td.col6 [row-buttons cue-id mouse-over]
+             #_[rc/button :label "x" :tooltip (str (:id cue))
+              :style {:box-shadow (str "8px 6px 10px 5px rgb(50, 50, 30, 0.3)") :border-radius "80px"
+                      :font-size 10
+                      :line-height "1.0" :vertical-align :center
+                      ;; :height "50%" :padding "10px 10px" :width 20  #_:background-color #_"rgb(50, 50, 50, 0.5)"}
+                      :height 25 :width 25 :padding "5px 5px"  #_:background-color #_"rgb(50, 50, 50, 0.5)"}
+              :on-click (fn [e] (rf/dispatch [:cue-clicked cue-id e]))]]
+            ; save/forget vars button
+            ; value/lfo viz
+            ]))]]
+   [rc/button :label "MACRO" :style {:size "30%"} :on-click #(rf/dispatch [:macro-button]) :tooltip "enter??"]]))
+
 
 (defn header-bar []
- (let [cues (rf/subscribe [:cues])
-       active (rf/subscribe [:active])
-       progress (rf/subscribe [:done])]
-  [:div {:style {:font-size 14 :line-height 1.4
-                 :background-color "#303031" :color "#bcd"
-                 :height 100 :width "100%" :border "4px solid #222"}}
-  [:p (count @cues) "/" @sizer]
-  [:span @active]
-  ;; [rc/single-dropdown ]
-  #_[rc/progress-bar :model progress :striped? true
-   :style {:color "#567" :background-color "#222" :transition "0.5s"}]
-  ;; [rc/popover-tooltip]
-  ;; [rc/popover-border]
-  #_(for [cue @cues] (str (:position cue) ",  ")) ]))
-
-
-(def selecta (r/atom ""))
-(def slida (r/atom 0))
-
-(defn test-re-com []
-  ;; (safe)
-  [rc/h-box :height "50%" :width "25%"
-   :children [(for [y (reverse (range -1 2))]
-               [rc/h-box :size "33%"
-                :children [(for [x (range -1 2)]
-                            [rc/v-box :size "33%" :style {:border "2px solid" :background-color "green"}
-                             :children [[rc/label :label (str x y)]]])] ])]]
-  [rc/v-box
-   :height "100%" :width "80%"
-   :children [#_[rc/md-icon-button :md-icon-name "zmdi-plus" #_:tooltip #_"this thing"]
-              ;; [rc/info-button :info "WAZAAA"]
-              [rc/slider :model slida :style {:height "50px"}
-               :on-change #(reset! slida %)
-               :min 0 :max 1 :step 0.01 :width "90%"]
-              [rc/single-dropdown
-               :choices     [{:id 1 :label "One"}
-                             {:id 2 :label "Twoee"}
-                             {:id 3 :label "Sriie"}]
-               :model       nil ;selected-country-id
-               :title?      true
-               :placeholder "Several choice"
-               :width       "300px"
-               :max-height  "400px"
-               :filter-box? false
-               :on-change   #(reset! selecta %)]
-              [:div
-               [:strong "Damn: "]
-               (if (nil? @selecta)
-                "None"
-                (str (:label @selecta ) " [" @selecta "]"))]
-
-              [rc/button :label "Clicker" :on-click #(swap! selecta inc)
-               :tooltip "put into"]]])
+ (let [cues (rf/subscribe [:cues])]
+  [:div {:style {:font-size 12 :line-height 1.2
+                 :height 40 :width "100%" :border "4px solid #222"}}
+  #_[:p (count @cues) "/"]
+  ;; [rc/single-dropdown] [rc/popover-tooltip] [rc/popover-border]
+   ]))
 
 
 (defn ui []
-  [:div
+  [:div {:style {:background-color "#303031" :color "#bcd" }}
    [header-bar]
    [cue-grid]
-   [:p]
-   [nav-btns #_page]
-   [test-re-com]])  ;could even send s along and have it swapped from there?
+   [:table>tbody>tr
+    [:td [nav-btns :page]] [:td " - "] [:td [nav-btns :offset]]]
+   [sync-sources]
+   ;; [beat-viz] ;[metronome-controls]
+   [active-effects]
+   [:div#quil] ;animations!!!
+   ])  ;could even send s along and have it swapped from there?
 
 (when-some [el (js/document.getElementById "cue-db")]
   (db/init)
