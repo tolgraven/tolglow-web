@@ -1,57 +1,59 @@
 (ns tolglow.cue
   (:require [reagent.core :as r]
-            ;; [recalcitrant.core :refer [error-boundary]]
-            [re-com.core :as rc ]
+            [re-com.core :as rc :refer-macros [handler-fn]]
             [re-frame.core :as rf]
-            [tolglow.core :as core]
-            [tolglow.db :as db]))
+            [tolglow.db :as db]
+            [tolglow.prefab :as prefab]))
 
-;; (core/safe ) ;time to try this on...
+(defn cs [& names]
+  (clojure.string/join " " (filter identity names)))
+
+(rf/reg-sub :view
+ (fn [db [_ k default]]
+  (or (-> db :view k) default)))
+
+(rf/reg-event-db :view-changed
+ (fn [db [_ k pos]] ;page/individual. should also keep track of zoom etc? all viewport stuff
+  (assoc-in db [:view k] pos)))
+
+(rf/reg-sub :sync-sources (fn [db _] (-> db :sync :sources)))
+(rf/reg-event-db :set-sync
+ (fn [db [_ selected]] (assoc-in db [:sync :active] selected)))
+
 
 (rf/reg-event-db :save-cue ;but like, what's point of re-render if thing is outside our viewport
  (fn [db [_ cue]] (update db :cues #(conj cue %))))
 (rf/reg-event-db :delete-cue
  (fn [db [_ cue]] (update db :cues (fn [cues] (remove #(= (:id %) (:id cue)) cues))))) ;can just delete from list and will be replaced by a dummy. tho bit inefficient to trigger entire process from one dunno
 
-(rf/reg-sub :cues (fn [db [_ cue-key]] (:cues db []))) ;;  (fn [db [_ [max-x max-y]]] (:cues db [])))
-(rf/reg-sub :get-cue ;merge with :cues and this is what does with args?
- (fn [db [_ k arg]] ; like k :id arg :100, k :position arg [0 0]
-  (let [[cue] (filter #(= arg (k %)) (:cues db))]
-  cue #_(or cue {}))))
+(rf/reg-sub :cues (fn [db [_ cue-key]] (:cues db [])))
+(rf/reg-sub :get-cue
+ (fn [] (rf/subscribe [:cues])) ;so reason for this is it gets cached, so only dig in the db once!
+ (fn [cues [_ k arg]] ; like k :id arg :100, k :position arg [0 0]
+  (let [[cue] (filter #(= arg (k %)) cues)]
+  cue)))
 
-
-(rf/reg-sub :view (fn [db _ #_[_ pos]] (:view-page db [0 0]))) ;;  (fn [db [_ [max-x max-y]]] (:cues db [])))
 (rf/reg-sub :active
  (fn [db [_ id-key]]
   (if id-key
    (some #{id-key} (:active db))
    (:active db))))
 
-(rf/reg-event-db :cue-clicked
- (fn [db [_ id-key action-event]]
-   (let [cue @(rf/subscribe [:get-cue :id id-key])
-        #_click #_(parse-input action-event)
-         hit (:id cue)]
-    (if (nil? hit)
-     db ;start action to add new cue or something? dont forget to return db
-     (update db :active
-              ;; (if (some #{hit} (:active db)) ;avoid conj on nil id
+(rf/reg-event-fx :cue-interacted ;good? everything from clicking cue itself to delete/edit button of running one, etc
+ (fn [{:keys [db]} [_ id-key action-event]]
+   (let [cue @(rf/subscribe [:get-cue :id id-key]) ;row id for cue-list is actually cue-id!
+        hit (:id cue) ;should be same as id-key
+       #_click #_(parse-input action-event)]
+    (if (nil? hit) {:db db} ;here should check if we're in macro-adding mode or whatever...
+     (case action-event
+      ("click" "delete") ;rename stop/cancel? delete would mean deleting cue not stopping
+      {:db (update db :active
               (if (or (some #{hit} (:active db)) (nil? hit)) ;howtf does this fix? already checking for nil above...
-                       #(disj (set %) id-key)
-                       #(conj % hit))))))) ;) ;pretty nifty... too nifty for myself. flipped order or it keeps nesting
-;; (rf/reg-event-fx :cue-clicked
-;;  (fn [cofx [_ id-key action-event]]
-;;    ;; (let [[cue] (filter #(= (:id %) id-key) (:cues (:db cofx)))
-;;    (let [cue @(rf/subscribe [:get-cue :id id-key]) ;[cue] (filter #(= (:id %) id-key) (:cues (:db cofx)))
-;;         #_click #_(parse-input action-event)
-;;          hit (:id cue)]
-;;     (if (nil? hit)
-;;      cofx ;start action to add new cue or something? dont forget to return db
-;;      ;; (update db :active
-;;      (update-in cofx [:db :active]
-;;                  (if (or (some #{hit} (cofx :db :active)) (nil? hit)) ;avoid conj on nil id
-;;                           #(disj (set %) id-key)
-;;                           #(conj % hit))))))) ;) ;pretty nifty... too nifty for myself. flipped order or it keeps nesting
+               #(disj (set %) id-key)
+               #(conj % hit)))}
+      ("edit" "save")  #_[rc/modal-panel] ;actually this should be a full fx fn and just dispatch further...
+      {:db db
+       :dispatch [action-event]}))))) ;not impure now. but need to figure out how to set stuff up... but bit by bit (filter null, handle toggle: more serious op? pass down. yeah?)
 
 (rf/reg-event-db :view-changed
  (fn [db [_ pos]]
