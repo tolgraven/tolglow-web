@@ -1,0 +1,713 @@
+/* Bootstrap Toggle v2.2.2 corrections for Bootstrap 4*/
+.toggle-off { box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125); }
+.toggle.off { border-color: rgba(0, 0, 0, .25); }
+.toggle-handle { background-color: white; border: thin rgba(0, 0, 0, .25) solid; }
+
+.noselect { -webkit-touch-callout: none; /* iOS Safari */ -webkit-user-select: none; /* Safari */ -khtml-user-select: none; /* Konqueror HTML */ -moz-user-select: none; /* Firefox */ -ms-user-select: none; /* Internet Explorer/Edge */ user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */ }
+
+::-webkit-scrollbar {
+  /* all: initial; */
+  /* all: unset; */
+  /* prob time to give up on re-com it does far too much bs... */
+  /* because now im hiding even the default scrollbar... */
+  width: 0px;
+}
+input[type=range] {
+    -webkit-appearance: none;
+    /* background-color: rgb(80, 60, 70, 0.5); */
+    background-image: linear-gradient(rgba(30, 30, 30, 0.6), rgba(50, 20, 20, 0.5));
+    opacity: 0.7;
+    height: 25px;
+    /* width: 200px; */
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    background-color: rgb(30, 30, 30, 0.7);
+    width: 10px;
+    height: 30px; /*100%; cant use % */
+}
+input[type=range]:focus {
+  outline: 0px;
+  box-shadow: inset 0px 0px 1px 2px rgb(30, 30, 30, 0.8);
+}
+:root{
+    --faint-border: rgb(30, 30, 30, 0.5);
+    --faint-bg: rgb(30, 30, 30, 0.15);
+    --nav-height: 30px;
+    --danger: #dc8075;
+}
+body {
+    transition: 0.3s;
+    background-color: #2a2829;
+    color: #d5ccbf;
+    line-height: 1.3;
+    font-size: 13px;
+    text-align: center;
+    /* vertical-align: middle; /* only works with table cells*1/ */
+    /* margin: 2px 2px; */
+    max-width: 100%; /* prevent "nothing's actually there but allow me to let you nudge sideways anyways"" */
+    overflow-x: hidden;
+}
+
+pre {
+    background-color: #2a2829;
+    color: #d5ccbf;
+}
+span::first-letter { font-size: 110%; }
+
+span[data-descr] {
+  position: relative;
+  text-decoration: underline;
+  color: #00F;
+  cursor: help;
+}
+span[data-descr]:hover::after {
+  content: attr(data-descr);
+}
+
+.naver {
+  width: 100%;
+  height: var(--nav-height);
+  flex: 0 0 auto;
+  justify-content: space-between;
+  position: fixed;
+  /* top: 0px; */
+  background: rgb(50, 50, 50, 0.9);
+  border: 1px solid var(--faint-border);
+  z-index: 100;
+}
+.naver > a {
+  padding: 5px 15px;
+}
+.naver > a:hover {
+  filter: brightness(120%);
+  background: rgb(100, 100, 120, 0.3);
+}
+.nav-bar-fill {
+ height: var(--nav-height);
+}
+/* .show-control { */
+
+/* } */
+.row { /* abandon this shit!! */
+    margin-left: 5px; /*why is bootstrap default -15px??*/
+    margin-right: 5px;
+    /* padding-left: 5px; */ /*default is 15 **for cols within** so different thing */
+    /* padding-right: 5px; */
+    font-size: 90%;
+}
+
+.CodeMirror {
+  /* padding-bottom: 3px; /1* text cuts off in input otherwise... *1/ */
+  border: 0.5px solid var(--faint-border);
+}
+.CodeMirror-lines {
+  padding: 0px 0px; /* text cuts off in input otherwise... */
+  margin: 0px 0px -4px 0px;
+}
+
+.cue-page {
+  /* display: flex; /1* this prob good idea then wouldnt have to divide the items themselves at all *1/ */
+  /* flex-wrap: row wrap; /1* also remember order prop, could use *1/ */
+  display: block !important; /* ensure rows are separated */
+
+    text-align: center;
+    margin-top: 2px;
+    margin-bottom: 5px;
+    padding: 2px 2px;
+    /* border: 1px solid #678; */
+    border: 1px solid rgb(100, 110, 130, 0.5);
+    background-color: #282f32;
+}
+.parent-of-wrapping {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+.child-that-wraps {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-width: 50%;
+}
+.cue-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  margin-right: 2px;
+  margin-left: 2px;
+}
+
+.cue-cell {
+    color: #d5ccbf;
+    border: 1px solid rgb(30, 30, 30, 0.3); /* makes -within smaller and not proper centered... */
+    /* border: 0.5px solid rgb(30, 30, 30, 0.3); /1* makes -within smaller and not proper centered... *1/ */
+    /* outline: 0.5px solid rgb(30, 30, 30, 0.7); /1* doesnt seem to respect z *1/ */
+    border-radius: 3px;
+    width: 60px;
+    height: 50px;
+    /* min-width: 50%; */
+    /* box-shadow: 4px 3px 10px 3px rgb(50, 50, 30, 0.4); */
+    /* box-shadow: inset 4px 3px 10px 3px rgb(50, 50, 30, 0.4); */
+    font-style: bold;
+    /* transition: 0.2s ease-out, background-color 0.4s ease-in-out; */
+}
+
+.cue-cell-within {
+    transition: 0.2s ease-out, background-color 0.4s ease-in-out;
+    min-width: 90%; /*trying to get it to wrap*/
+    border-radius: 3px;
+    height: 100%;
+    margin: auto;
+    font-size: 90%;
+    position: relative; /* needed for z-index */
+    top: -0.25px; /* might be off now was for 0.5px cue-cell border but thats not working anymore... */
+    left: -0.25px;
+    cursor: pointer;
+
+  flex: 0 1 auto;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+    word-wrap: break-word; /* seems to work with flex */
+    /* overflow-wrap: break-word; */
+    /* word-break: break-all; /1* sucks *1/ */
+}
+.cue-cell-within:hover {
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+    z-index: 2;
+    filter: brightness(120%); /* background-color: #ccc !important; /1* ugly I guess but how else override inline? other option is handling hover in code... *1/ */
+    transform: scale(1.06);
+}
+/* .cue-cell-within:hover::after { /*so this works but i mean doesn't select the parent, just creates a new element... *1/ */
+/*     content: ""; */
+/* } */
+.cue-cell-within:active { /* should be used to indicate click-and-drag */
+    box-shadow: 0px 0px 0px 3px rgb(160, 180, 190, 0.85); /*instead of outline, for rounded corners*/
+    z-index: 2;
+    filter: brightness(140%); /* background-color: #fff !important; */
+    transform: scale(1.14);
+}
+.cue-cell-text {
+  max-width: 80%; /* either this or pad I guess */
+  /* padding: 0px 10px; /1* prob more consistent. bit over-eager breaking... *1/ */
+}
+.cue-cell-droppable {
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+    z-index: 2;
+}
+
+.cue-cell-empty {
+    height: 100%;
+    border-radius: 2px;
+    border: 1px solid rgb(30, 30, 30, 0.20);
+    background-image: radial-gradient(#282f32, #262b30);
+    box-shadow: 4px 3px 10px 3px rgb(40, 40, 50, 0.4);
+}
+.cue-cell-empty-saveable:hover {
+    position: relative; /* needed for z-index */
+    z-index: 2;
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+}
+/* .cue-cell ::after { */
+/*     opacity: 0; */
+/*     transition: opacity 0.5s, 0.8s ease-in; */
+/*     background-image: linear-gradient(-20deg, rgba(50, 50, 45, 0.22), red); */
+/* } */
+
+.cue-list {
+    margin: 10px 5px 10px 5px;
+    /* padding: 4px 2px; */
+    border: 2px solid #292929; /* border: 2px solid rgb(50, 50, 50, 0.7); */
+    background: rgba(30, 30, 30, 0.4);
+}
+.cue-list-header > div {
+  display: flex;
+  padding: 0px 5px;
+  /* display: inline-flex; */
+}
+.cue-list-header > div > div {
+  margin: 0px 5px;
+}
+
+.cue-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+    padding: 2px 0px;
+    border: 2px solid #242424; /* border: 2px solid rgb(50, 50, 50, 0.7); */
+    background: rgba(20, 20, 20, 0.4);
+    opacity: 0.7;
+}
+
+.cue-list-top-bar {
+  display: flex;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+}
+.filters-saved {
+  flex: 1 1 auto;
+  /* align-items: center; */
+}
+.filter-saved {
+  padding: 5px 5px;
+  border-radius: 8px;
+  margin-right: 8px;
+  display: inline-flex;
+  flex: 1 1 auto;
+  background: rgb(10, 10, 10, 0.5);
+  text-align: left;
+  align-self: center;
+}
+
+.stop-btns {
+  display: flex;
+  align-items: center;
+}
+
+
+.effect-row {
+    display: flex; /* test */
+    justify-content: space-between;
+
+    /* transition: 0.2s ease-out, background-color 1s ease-in-out; */
+    box-shadow: inset 1px 1px rgb(55, 60, 60, .25);
+    /* padding: 1px 2px; */
+    /* margin: 1px 2px; */
+
+    /* height transition test */
+    overflow: hidden;
+    transition: 0.2s ease-out, background-color 1s ease-in-out, max-height 0.3s cubic-bezier(0.9, 0, 0.9, 0);
+    height: auto;
+    max-height: 999px;
+}
+.effect-row-minimized {
+  max-height: 50px; /* should set like one line font size or? */
+  transition: 0.2s ease-out, background-color 1s ease-in-out, max-height 0.3s cubic-bezier(0, 0.9, 0, 0.9);
+}
+.effect-row:hover { /* doesnt appear to apply to bg-color transition time so */
+    filter: brightness(120%); /* background-color: rgb(100, 100, 100, 0.5); */
+}
+.effect-row:hover :last-child {
+  visibility: visible; /* show row buttons. matches a ton of other crap tho so should be more specific... */
+  /* filter: brightness(150%); */
+  /* other info: */
+/* Note that, as data attributes are plain HTML attributes, you can even access them from CSS.
+ * For example to show the parent data on the article you can use generated content in CSS with the attr() function: */
+/*  article::before { content: attr(data-parent); } */
+/*  You can also use the attribute selectors in CSS to change styles according to the data: */
+/*  article[data-columns='3'] { width: 400px; } */
+/*  article[data-columns='4'] { width: 600px; } */
+}
+
+
+.collapsable-section { /* height transition test */
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.9, 0, 0.9, 0); /* how add to transitions and not replace??? */
+    height: auto;
+    max-height: 999px;
+}
+.collapsable-section-collapsed {
+  max-height: 50px; /* should set like one line font size or? */
+  transition: max-height 0.4s cubic-bezier(0, 0.9, 0, 0.9);
+}
+
+.effect-row > div {
+  display: flex;
+    overflow: hidden;
+    border-right: 1px solid rgb(55, 60, 60, .55); /* dont double up border */
+    border-bottom: 1px solid rgb(55, 60, 60, .55);
+}
+
+.effect-info {
+  display: block !important; /* ensure line1 and line2 are separated */
+  padding: 2px 5px;
+    /* margin-top: 4px; */
+  font-size: 12px;
+  /* width: 20%; */
+  min-width: 20%;
+  max-width: 20%;
+}
+.effect-info > div {
+  flex: 1 1 auto;
+  align-items: center;
+    margin: 3px 3px;
+}
+.effect-info-line1 > div {
+    margin: 0px 3px;
+    text-align: left;
+}
+
+/* .effect-info-line1 { */
+/* } */
+/* .effect-info-line1-name { */
+/* } */
+.effect-info-line2 {
+  text-align: left;
+}
+.effect-row-buttons { /* ideally: wrap *if container multiline* else no
+    /* display: flex; /1* test *1/ */
+    /* flex-flow: column wrap; */
+  flex: 0 0 auto; /* dont expand */
+    align-items: center;
+    align-content: center;
+    opacity: 0.75;
+    padding: 0px 4px;
+}
+.effect-row-button {
+  transition: opacity 200ms;
+  margin: 0px 3px;
+  color: #dcb;
+  font-size: 20px;
+  box-shadow: 8px 6px 10px 5px rgb(50, 50, 30, 0.25);
+}
+.cue-var-controls {
+  /* display: flex; */
+  flex-flow: row wrap; /* shrinks otherwise */
+  flex: 1 1 auto; /* ensures -main container with control actually expands */
+  background: var(--faint-bg);
+}
+.cue-var-summary {
+  display: flex;
+  flex: 0 1 auto;
+}
+.cue-var-summary > div {
+  margin: 0px 5px;
+}
+
+.cue-var-control { /* IDEAS: smooth resizing/drag-n-drop reordering of controls, and auto-flow */
+  /* so could have half-line sliders etc */
+  /* so how can we override and put several on same row for some? */
+  display: flex;
+  position: relative;
+  /* flex: 0 1 auto; */
+  flex: 1 1 auto; /* uh why is this working now? prob bc hard-specifying width on "those" */
+  width: 100%; /* each control (or summary-line) on own line in flex container */
+  justify-content: space-around; /* for summary (since all space auto filled when controls) */
+  align-items: center; /* vertical center */
+  /* flex-flow: row wrap; *1/ /1* default */
+    padding: 1px 2px;
+    /* margin: 4px 3px; */
+    margin: 4px 5px;
+    background: rgba(50, 50, 50, 0.15);
+    text-align: right;
+}
+
+.cue-var-control-main {
+  align-items: center;
+  justify-content: center;
+  justify-items: center;
+
+  margin: 2px 8px;
+  padding: 0px 1px;
+  /* outline: 1px solid rgb(55, 60, 60, .45); */
+  background: rgba(50, 50, 50, 0.10);
+  box-shadow: 0px 0px 15px 12px rgb(30, 30, 30, 0.06);
+  /* box-shadow: 0px 0px 5px 5px rgb(30, 30, 30, 0.06); */
+}
+.auto-expand {
+  max-width: 70%;
+  flex: 1 1 auto; /* needed for most controls to auto expand. but fixed-width (xy, knob) mustnt ... */
+}
+.cue-var-control-main > div {
+  /* min-width: 30vw; */
+}
+.cue-var-control-main > div:hover {
+  filter: brightness(110%);
+  /* flex: 1 1 auto !important; */ /* still needed? force child to expand */
+}
+.cue-var-field {
+  flex: 1 1 auto; /* expand these to max-width for even cols */
+  max-width: 15%;
+}
+.cue-var-control-name, .cue-var-control-value {
+  /* flex: 1 1 auto; /1* expand these to max-width for even cols *1/ */
+  /* max-width: 15%; /1* leads to some double rows on xy vals hmm *1/ */
+  /* display: flex; */
+
+    /* margin-top: 0px; */
+    /* padding-right: 0px; */
+    /* outline: 1px solid rgb(20, 20, 20, 0.05); */
+    /* background: rgba(150, 150, 150, 0.05); */
+}
+
+.control-bg { /* common for controls' main surface/background */
+  background: linear-gradient(rgb(50, 60, 65, 0.85), rgb(33, 36, 40, 0.65));
+  box-shadow: 0px 0px 0px 1px rgb(30, 30, 30, 0.5);
+  /* border: 1px solid rgb(100, 70, 60, 0.6); /1* hmm breaks stuff *1/ */
+}
+.control-bg > div {
+  transition: 0.1s; /* smooth moves */
+}
+.control-xy-pointer {
+  position: relative;
+  background: rgb(190, 70, 70, 0.8);
+  /* border-radius: 10px; */
+  border-radius: 1px;
+  border: 1px solid rgb(120, 50, 40, 0.2);
+  box-shadow: 0px 0px 3px 1px rgb(130, 70, 60, 0.8), inset 0px 0px 4px 3px rgb(0, 0, 0, 0.1);
+  width: 20px;
+  height: 20px;
+  cursor: initial;
+}
+.control-xy {
+  cursor: crosshair;
+  border: 1px solid rgb(30, 30, 30, 0.3);
+}
+
+.control-slider {
+  flex: 1 1 auto;
+  /* width: 100%; */
+  /* min-width: 100px; */
+}
+/* .control-slider > div { */
+/*   transition: 0.1s; */
+/* } */
+.control-slider-fill {
+  background-image: linear-gradient(rgb(160, 75, 65, 0.8), rgb(180, 45, 40, 0.6));
+  /* --base: rgb(160, 75, 65, 0.8); */
+  /* background-image: linear-gradient(var(--base), calc(var(--base))); */
+  /* ^ want to set up auto gradients later on... */
+}
+.control-slider-thumb {
+  border-radius: 2px;
+  transform: scaleY(1.15);
+  background: #222;
+  box-shadow: -7px 0px 13px 1px rgb(80, 40, 30, 0.4),
+               4px 0px  3px 0px rgb(50, 40, 30, 0.3),
+         inset 0px 0px  5px 2px rgb(10, 10, 10, 0.2);
+}
+
+
+div .control-knob-tick {
+  background: #222;
+  /* width: 8px; /1* maybe be careful about removing properties that make component entirely borked without css tho... *1/ */
+  border-radius: 8px;
+  box-shadow: -7px 0px 13px 1px rgb(80, 40, 30, 0.4),
+               4px 0px  3px 0px rgb(50, 40, 30, 0.3),
+         inset 0px 0px  5px 2px rgb(10, 10, 10, 0.2);
+}
+.control-knob-limit {
+  background: rgb(60, 60, 60, 0.8);
+  width: 2px;
+  transform: scale(0.7);
+}
+.control-knob-bull {
+  background: rgb(25, 25, 25, 0.9);
+  z-index: 2;
+  border-radius: 100%;
+  box-shadow: 0px 0px 5px 5px rgb(30, 30, 30, 0.15);
+}
+
+.control-knob {
+  /* border-radius: 100%; */
+  overflow: hidden;
+  position: relative;
+}
+
+circle.knob-pie {
+  fill: transparent;
+  /* stroke: linear-gradient(rgb(160, 75, 65, 0.8), rgb(180, 45, 40, 0.6)); */
+  stroke: rgb(160, 75, 65, 0.6);
+}
+svg.knob {
+}
+
+.control-knob-pie {
+  /* --over50: 1; */
+  --a: calc(var(--over50, 0) * -100%);
+  --b: calc((1 + var(--over50, 0)) * 100%);
+  --degrees: calc((var(--offset, 0) / 100) * 360);
+  -webkit-clip-path: polygon(var(--a) var(--a), var(--b) var(--a), var(--b) var(--b), var(--a) var(--b));
+  clip-path: polygon(var(--a) var(--a), var(--b) var(--a), var(--b) var(--b), var(--a) var(--b));
+  height: 100%;
+  position: absolute;
+  -webkit-transform: translate(0, -50%) rotate(90deg) rotate(calc(var(--degrees) * 1deg));
+          transform: translate(0, -50%) rotate(90deg) rotate(calc(var(--degrees) * 1deg));
+  -webkit-transform-origin: 50% 100%;
+          transform-origin: 50% 100%;
+  width: 100%;
+  z-index: calc(1 + var(--over50));
+}
+.control-knob-pie:after, .control-knob-pie:before {
+  background: var(--bg, #e74c3c);
+  content: '';
+  height: 100%;
+  position: absolute;
+  width: 100%;
+}
+.control-knob-pie:before {
+  --degrees: calc((var(--value, 45) / 100) * 360);
+  -webkit-transform: translate(0, 100%) rotate(calc(var(--degrees) * 1deg));
+          transform: translate(0, 100%) rotate(calc(var(--degrees) * 1deg));
+  -webkit-transform-origin: 50% 0%;
+          transform-origin: 50% 0%;
+}
+.control-knob-pie:after {
+  opacity: var(--over50, 0);
+}
+/* * { */
+/*   box-sizing: border-box; */
+/* } */
+/* body { */
+/*   align-items: center; */
+/*   display: flex; */
+/*   flex-direction: column; */
+/*   padding: 1rem; */
+/*   justify-content: center; */
+/*   min-height: 100vh; */
+/* } */
+
+.hue-horizontal {
+    background: linear-gradient(to right, #dc6464bb 0%, #adab51 17%, #4dad4d 33%, #5cc2c2 50%, #5757bc 67%, #ae62bd 83%, #a25050 100%) !important;
+    /* padding: 9px 2px; */
+    /* margin-top: 9px !important; */
+    /* margin-bottom: 3px !important; */
+}
+.slider-picker :last-child :first-child {
+  margin-top: 0px !important; /* only works with 0px, selects more firsts... */
+}
+
+
+.macro-btns {
+    margin: 10px 10px;
+    overflow: hidden;
+    border: 1px solid var(--faint-border);
+}
+
+.slide-in-left-hidden {
+    position: relative;
+    z-index: 0;
+    left: -100%; /* slide out animation */
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+}
+.slide-in-left-visible {
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+    left: 5px;
+}
+
+/* .macro-selecting-ui { */
+/* } */
+
+.hidden {
+  visibility: hidden !important;
+  opacity: 0;
+  transition: visibility 0s 0.25s, opacity 0.25s ease-in;
+}
+.visible {
+  visibility: visible !important;
+  opacity: 1;
+  transition: opacity 0.25s ease-out;
+}
+.removed { display: none; }
+.restored { display: inherit; }
+
+.darkened {   filter: brightness(80%); }
+.brightened { filter: brightness(120%); }
+.left {   text-align: left; }
+.right {  text-align: right; }
+
+.flex-center {
+    display: flex;
+    align-items: center;
+}
+
+/* .centered-text { */
+/*     position: absolute; */
+/*     top: 50%; */
+/*     left: 50%; */
+/*     transform: translate(-50%, -50%); */
+/* } */
+/* .rc-popover-point, .rc-poover-tooltip { */
+/*   background-color: rgb(31, 31, 31, 0.6); */
+/* } */
+
+.nav-and-utils {
+  display: flex;
+  justify-content: space-around
+    /* flex-wrap: wrap; */
+
+}
+
+.nav-btns {
+    margin: 2px 2px;
+    background-color: #282828;
+    border: 1px solid rgba(100, 100, 100, 0.4);
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.nav-btn {
+  min-width: 33%;
+  flex: 0 1 auto;
+    border: 1px solid rgba(100, 100, 100, 0.2);
+    border-radius: 6px;
+    font-size: 15px;
+    opacity: 0.8;
+}
+
+.sync-sources {
+  margin: 2px 5px;
+  text-align: left;
+}
+
+
+.row-button { /*cant reach these by css...*/
+    transition: opacity 270ms;
+    color: #dcb;
+    font-size: 20px;
+    box-shadow: 8px 6px 10px 5px rgb(50, 50, 30, 0.25);
+}
+
+.input-dark {
+    background: rgba(30, 30, 30, .65) !important;
+    color: #dcb !important;
+    opacity: 0.9;
+    z-index: 5;
+}
+
+
+
+.chosen-container-single > div {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container-single .chosen-single {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container-multi .chosen-choices {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container .chosen-drop {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container-active {
+    background: rgba(30, 30, 30, .65);
+}
+code {
+    background: rgba(30, 30, 30, .3) !important;
+    color: var(--info) !important;
+    border: 0px; /* weird bug */
+}
+.map-pprint {
+    background: rgba(30, 30, 30, .5) !important;
+    color: #dcb !important;
+    border: 1px solid #887;
+}
+.header-bar {
+    background: rgba(0, 0, 0, .3) !important;
+    font-size: 12px;
+    text-align: left;
+    border: 3px solid #222;
+}
+
+.progress-bar { color: #567; background-color: #222; }
