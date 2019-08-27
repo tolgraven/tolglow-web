@@ -2,50 +2,73 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="/css/tron-ui.min.css" rel="stylesheet" type="text/css">
-    <link href="/css/codemirror.css" rel="stylesheet" type="text/css">
+    <meta name="viewport" content="width=device-width">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> --> <!-- doesnt work with modern ios anyways -->
+    <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384&#45;ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"> -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <!-- <link href="/css/tron&#45;ui.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- <link href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/styles/default.min.css" rel="stylesheet"> -->
+    <!-- <link href="/css/codemirror.css" rel="stylesheet" type="text/css"> -->
+    <link href="/css/material-design-iconic-font.min.css" rel="stylesheet">
+    <link href="/css/re-com.css" rel="stylesheet">
+    <link href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Roboto+Condensed:400,300' rel='stylesheet' type='text/css'>
+    <!-- <link href="/css/Roboto:300,400,500,700,400italic.css" rel="stylesheet" type="text/css"> -->
+    <!-- <link href='/css/Roboto+Condensed:400,300.css' rel='stylesheet' type='text/css'> -->
+
+    <link href="/css/birds-of-paradise.css" type="text/css" rel="stylesheet">
+    <link href="http://app.klipse.tech/css/codemirror.css" type="text/css" rel="stylesheet">
+
+
+    <link rel="shortcut icon" href="/favicon/favicon.ico"> <!-- ****** faviconit.com favicons ****** -->
+    <link rel="icon" sizes="16x16 32x32 64x64" href="/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="196x196" href="/favicon/favicon-192.png">
+    <link rel="icon" type="image/png" sizes="160x160" href="/favicon/favicon-160.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon/favicon-96.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon/favicon-64.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16.png">
+    <link rel="apple-touch-icon" href="/favicon/favicon-57.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/favicon/favicon-114.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/favicon/favicon-72.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/favicon/favicon-144.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/favicon/favicon-60.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/favicon/favicon-120.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/favicon/favicon-76.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/favicon/favicon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/favicon-180.png">
+
+    <link href="/css/tolglow.css" rel="stylesheet">
   </head>
-  <body style=background-color:#313232;color:#daecf2>
-
-    <header class="navbar navbar-default navbar-static-top" style=background-color:black;color:white>
-      <div class="container" style="background-color:#333435 ; color:#cde">
-        <div class="row">
-          <h3 class="col-md-12">
-            <a href="/index.html">
-              Cue grid test
-            </a>
-          </h1>
-        </div>
+  <body>
+    <div class="fuck-your-defaults-mr-container">
+      <div id="cue-db">
+        Loading... <i class="fa fa-spinner fa-spin"></i>
       </div>
-    </header>
-
-    <div class="container" style=background-color:#333435;color:#cde>
-      <!-- <div class="row" style=background&#45;color:#333435;color:#cde> -->
-        <!-- <div class="col&#45;md&#45;12"> -->
-          <div id="cue-db" style=background-color:#333435;color:#cde>
-            Loading <i class="fa fa-spinner fa-spin"></i>
-          </div>
-        <!-- </div> -->
-      <!-- </div> -->
     </div>
 
-    <script src="/js/jquery.min.js"></script>
+    <script src="/js/jquery-3.3.1.slim.min.js"></script>
+    <script src="/js/popper.min.js"></script>
     <script src="/js/bootstrap.min.js"></script>
-    <script src="/js/tron-ui.js"></script>
-    <script src="/js/showdown.min.js"></script>
-    <script src="/js/codemirror.js"></script>
+    <script src="/js/DragDropTouch.js"></script> <!-- translate touch-n-drag events to standard drag-n-drop. Doesn't seem to work tho?? -->
+    <!-- <script src="/js/codemirror.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/highlight.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/languages/clojure.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/marked/0.3.2/marked.min.js"></script> -->
 
+    <!-- <script> window.klipse_settings = { selector: '.language&#45;klipse' }; // css selector for the html elements you want to klipsify -->
+    <!-- </script> -->
+    <!-- <script src="http://app.klipse.tech/plugin/js/klipse_plugin.js"></script> -->
     <script src="/js/compiled/app.js" type="text/javascript"></script>
-    <script>
-     jQuery(function() {
-       jQuery('a[data-toggle="tab"]').click(function(e) {
-         e.preventDefault();
-         console.log(e);
-         jQuery(this).tab('show');
-         console.log(jQuery(this));
-       });
-     });
-    </script>
+    <!-- <script> -->
+    <!--  jQuery(function() { -->
+    <!--    jQuery('a[data&#45;toggle="tab"]').click(function(e) { -->
+    <!--      e.preventDefault(); -->
+    <!--      console.log(e); -->
+    <!--      jQuery(this).tab('show'); -->
+    <!--      console.log(jQuery(this)); -->
+    <!--    }); -->
+    <!--  }); -->
+    <!-- </script> -->
   </body>
 </html>
