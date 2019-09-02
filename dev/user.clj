@@ -1,56 +1,63 @@
 (ns user
   (:require
+   [tolglow-web.config :refer [env]]
+   [tolglow-web.core :refer [start-app]]
+   [tolglow-web.db.core]
+   [clojure.spec.alpha :as s]
+   [expound.alpha :as expound]
+   [mount.core :as mount]
+   [conman.core :as conman]
+   [luminus-migrations.core :as migrations]
    [figwheel-sidecar.repl-api :as f]
    [cider.piggieback]
-    [cljs.repl.nashorn]))
+   [cljs.repl.nashorn]))
+;; user is a namespace that the Clojure runtime looks for and loads when available
+;; place helper fns here. great for starting and stopping servers and other dev services
+;; defs here will be available from "lein repl" or other clojure repls
 
-;; user is a namespace that the Clojure runtime looks for and
-;; loads if its available
-
-;; You can place helper functions in here. This is great for starting
-;; and stopping your webserver and other development services
-
-;; The definitions in here will be available if you run "lein repl" or launch a
-;; Clojure repl some other way
-
-;; You have to ensure that the libraries you :require are listed in your dependencies
-
-;; Once you start down this path
-;; you will probably want to look at
-;; tools.namespace https://github.com/clojure/tools.namespace
-;; and Component https://github.com/stuartsierra/component
-
-;; ACTUAL:
-;; lein repl
-;; vim, require core.clj to connect
-;; require core.cljs
-;; -> rock on
-;; beware: enable-console-print! bugs out cpp println...?
-;; bunch of fns that work in cljs-repl errors like
-;; "cannot read property of 'call" from undefined
-;;
-
-;; I THINK THIS IS IT::
-#_(do (require 'figwheel-sidecar.repl-api)
-           (figwheel-sidecar.repl-api/start-figwheel!)
-           (figwheel-sidecar.repl-api/cljs-repl))
 
 (defn piggieback-manual []
   (cider.piggieback/cljs-repl (cljs.repl.nashorn/repl-env)))
 
 (defn fig-start "This starts the figwheel server and watch based auto-compiler." []
-  ;; this call will only work are long as your :cljsbuild and
-  ;; :figwheel configurations are at the top level of your project.clj
-  ;; and are not spread across different lein profiles
-
-  ;; otherwise you can pass a configuration into start-figwheel! manually
-  (f/start-figwheel!) ;guess we dont want to start the cljs-repl if trying to let vim do the conversion?
-  )
-
+  (f/start-figwheel!)) ;guess we dont want to start the cljs-repl if trying to let vim do the conversion?
 (defn fig-stop "Stop the figwheel server and watch based auto-compiler." []
   (f/stop-figwheel!))
-
-;; if you are in an nREPL environment you will need to make sure you
-;; have setup piggieback for this to work
 (defn cljs-repl "Launch a ClojureScript REPL that is connected to your build and host environment." []
   (f/cljs-repl))
+
+
+
+(alter-var-root #'s/*explain-out* (constantly expound/printer))
+(add-tap (bound-fn* clojure.pprint/pprint))
+
+(defn start "Starts application.  You'll usually want to run this on startup." []
+  (mount/start)) ; (mount/start-without #'tolglow-web.core/repl-server))
+
+(defn stop "Stops application." []
+  (mount/stop)) ; (mount/stop-except #'tolglow-web.core/repl-server))
+
+(defn restart "Restarts application." []
+  (stop)
+  (start))
+
+(defn restart-db "Restarts database." []
+  (mount/stop #'tolglow-web.db.core/*db*)
+  (mount/start #'tolglow-web.db.core/*db*)
+  (binding [*ns* 'tolglow-web.db.core]
+    (conman/bind-connection tolglow-web.db.core/*db* "sql/queries.sql")))
+
+(defn reset-db "Resets database." []
+  (migrations/migrate ["reset"] (select-keys env [:database-url])))
+
+(defn migrate "Migrates database up for all outstanding migrations." []
+  (migrations/migrate ["migrate"] (select-keys env [:database-url])))
+
+(defn rollback "Rollback latest database migration." []
+  (migrations/migrate ["rollback"] (select-keys env [:database-url])))
+
+(defn create-migration "Create a new up and down migration file with a generated timestamp and `name`."
+  [name]
+  (migrations/create name (select-keys env [:database-url])))
+
+; (create-migration "export")

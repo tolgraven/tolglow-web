@@ -1,0 +1,69 @@
+[^{:datomic/tag true :lacinia/tag true}
+ default
+
+ ^{:enum true}
+ CueVarType
+ [NUMBER COLOR XY] ;xy as afterthought and I mean even color is just numbers hmm
+ ;UNIT as a field duh. %, unity, meters, degrees...
+ ^{:enum true}
+ Unit
+ [PERCENT UNIT_FLOAT METER DEGREE]
+
+ ^{:enum true}
+ TimeUnit
+ [SECOND BEAT BAR PHRASE]
+ ;Fraction: Percent, unitFloat, fraction
+ ;Distance: Meter, degree (sorta)...
+ ;Time: Second, Beat, Bar, Phrase...
+ ;
+ ;
+ ^{:interface true}
+ Ranged [^Number min [{:type ^Unit :optional true :default UNIT_FLOAT} unit]]
+         [^Number max [{:type ^Unit :optional true :default UNIT_FLOAT} unit]]
+ ; :categorized {:fields {:id {}
+ ;                        :name {}
+ ;                        :type {}}}
+
+  [^{:doc "Single cue definition"}
+   Cue
+   [^ID id ;{:type (non-null ID)}
+    ^String name
+    ^IEffect fx
+    ;could do:
+    ^{:type Integer :cardinality [2]} position
+    ^String color
+    ^{:type String :optional true} current_color ;add resolver how?
+    ^{:type Integer :optional true} priority
+    ^{:type Variable :cardinality [0 n]} variables ]
+
+   Variable
+   [^String name
+    ^{:type CueVarType ;(enum)
+      :doc "Current value, when cue is active or saved."
+      #_:resolve #_:get-active-cue-var} value
+    ; :type {:type :cue_var_type} ;or like, keyword
+    ^{:type CueVarType} min ; :min {:type {:type {:type Variable}}} ;lols
+    ^{:type CueVarType} max
+    ^{:type CueVarType :optional true} starting]
+
+   Control
+   [^Integer id
+    ^String name
+    :for_type {:type String}] ;or :type :type
+
+    ^{:union true}
+    RecordItem [Param Effect Variable Cue] ;eventually
+
+ :queries
+ {:cue_for_id {:type :Cue
+               :args {:id {:type ID}}
+               :resolve :get-cue-for-id}
+  :cue_var {:type (non-null :Variable)
+            :args {;:cue {:type :Cue} ;parent
+                   :name {:type String :default-value "Level"}}
+            :resolve :get-cue-var}
+  :control {:type :Control
+            :args {:id {:type ID :default-value "1000"}}
+            :resolve :get-control}}}]
+
+

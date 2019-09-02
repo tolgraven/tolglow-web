@@ -1,0 +1,31 @@
+{:cues
+ [{:id :1    :color "blue" :text "Run shite" :position [0 0] :fx "Strobe" :priority 100
+   :variables [{:type :number :name "Level" :min 0 :max 100}
+               {:type :color :name "Color"}
+               {:type :number :name "Lightness" :min 0 :max 100}]}
+  {:id :3    :color "red" :text "Extra sparkle" :position [1 0] :fx "Color" :priority 5
+   :variables [{:type :color :name "Color" :starting "black"}]}
+  {:id :11   :color "green" :text "Moving" :position [2 0] :fx "Pan" :priority 3
+   :variables [{:type :xy-pad :name "pan"}
+               {:type :xy-pad :name "tilt"}]}
+  {:id :10   :color "seagreen" :text "Moving" :position [3 0] :fx "Aim"
+   :variables [{:type :space :name "x" :min -10 :max 10 :starting 0}
+               {:type :space :name "y" :min -2 :max 4 :starting 0}
+               {:type :space :name "z" :min -2 :max 10 :starting 0}]}
+  {:id :0    :color "purple" :text "Fog" :position [4 0] :fx "Fsshh!"}
+  {:id :200  :color "orange" :text "Stripe" :position [0 1] :fx "Tilt"}
+  {:id :19   :color "black" :text "Wash" :position [1 1] :fx "Shutter"}
+  {:id :100  :color "orangered" :text "Pointy" :position [2 1] :fx "Blame"
+   :variables [{:type :ratio :name "beats" :starting [4 2]}]}
+  {:id :108  :color "seagreen" :text "2nd ROW" :position [6 0] :fx "YO"}
+  {:id :109  :color "purple" :text "2nd ROW"   :position [6 1] :fx "YO"}
+  {:id :110  :color "seagreen" :text "2nd ROW" :position [6 2] :fx "YO"}
+  {:id :111  :color "seablue" :text "2nd ROW" :position [6 3] :fx "YO"}
+  {:id :112  :color "antiquewhite" :text "2nd ROW" :position [6 4] :fx "YO"}
+  {:id :113  :color "aqua" :text "2nd ROW" :position [6 5] :fx "YO"} ]
+ :sync {:selected-id nil
+        :sources
+        [{:id 1 :label "MIDI 1" :type :midi}
+         {:id 2 :label "Beat Link" :type :beat-link}
+         {:id 3 :label "Ableton Link" :type :ableton-link}
+         {:id 4 :label "Audio analysis" :type :audio}]}}

@@ -1,0 +1,1 @@
+{:foreign-libs [{:file "cljsjs/react-slider/development/react-slider.inc.js", :provides ["cljsjs.react-slider"], :requires ["cljsjs.react"], :file-min "cljsjs/react-slider/production/react-slider.min.inc.js"}], :externs ["cljsjs/react-slider/common/react-slider.ext.js"]}
