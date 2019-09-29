@@ -1,0 +1,9 @@
+#include <packing>
+
+// fuck ortho. at least i understand it now.
+float readDepth(sampler2D depthSampler, vec2 coord) {
+  float fragCoordZ = texture2D(depthSampler, coord).x; //XXX texture access is normalized
+  float viewZ      = perspectiveDepthToViewZ(fragCoordZ, near, far); //neg in front of cam
+  float orthoDepth = viewZToOrthographicDepth(viewZ, near, far);
+  return orthoDepth;  //this works - with ortho cam... issue that we're a material shader and using projection?
+}
