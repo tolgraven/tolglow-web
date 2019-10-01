@@ -21,120 +21,38 @@
 ;; ************************************************************
 ;; I mean 97% certain geom and his gl will be best to work with...
 ;; ************************************************************
-(declare spotlights)
-(defn depth-texture-target [[w h]]
- (doto (three/WebGLRenderTarget. w h)
-  (j/assoc-in! [:texture :format]    three/RGBFormat)
-  ; (j/assoc-in! [:texture :minFilter] three/NearestFilter) ;default (and req for depth texture)
-  (j/assoc-in! [:texture :generateMipmaps] false) ;req for depth texture
-  (j/assoc! :stencilBuffer false
-            :depthBuffer   true
-            :depthTexture  (doto (three/DepthTexture.)
-                            (j/assoc! :type three/UnsignedShortType)))))
+(defonce ^{:doc "Because we also live-reload shaders, they are stored here."} globals
+ (atom
+  {:shader
+   {:cone
+    {:vert "void main() { gl_Position	 = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+     :frag "void main() { gl_FragColor = vec4(vec3(0.6, 0.2, 0.2), 0.3); }"}
+    :glow
+    {:vert "uniform vec3 viewVector;
+            uniform float powTo;
+            varying float intensity;
+            void main() {
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              vec3 actual_normal = vec3(modelMatrix * vec4(normal, 0.0));
+              //intensity = pow(dot(normalize(cameraPosition - position), actual_normal), powTo);
+              intensity = pow(dot(normalize(viewVector), actual_normal), powTo);
+            }"
+     :frag "varying float intensity;
+            uniform vec3 lightColor;
+            uniform float dimmer;
+            void main() {
+              vec3 color   = lightColor * (1.0 - intensity);
+              gl_FragColor = vec4(lightColor, intensity * dimmer);
+            }"}}}))
 
-(defn volu-spot-material [& {:keys [camera d-target fetching] :or {fetching :material}}] ;or just fragment-shader etc (dont make new obj)
- (let [vertex-shader   "void main() { gl_Position	 = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }" ;or just 0 i guess uh
-       fragment-shader "void main() { gl_FragColor = vec4(vec3(0.8, 0.3, 0.3), 0.8); }" ;temp for diag
-       uniforms
-       {:near          {:value (.-near camera)}
-        :far           {:value (.-far  camera)}
-        :tDiffuse      {:value (.-texture      d-target)}
-        :tDepth        {:value (.-depthTexture d-target)}
-        :textureMatrix {:value (three/Matrix4.)}
-        :furthest      {:type "f"  :value 20.0}
-        :anglePower    {:type "f"  :value 2.7}
-        :spotPosition  {:type "v3" :value (three/Vector3. 0 0 0)}
-        :lightColor    {:type "c"  :value (three/Color. "white")}
-        :opacity       {:type "f"  :value 0.70}
-        :cap           {:type "f"  :value 0.65} ;opacity 0.65 cap 0.60 quite nice but gotta fix so can see shit even when pointing my dir...
-        :dimmer        {:type "f"  :value 0.0 #_1.00}} ;oh right default 0.0 much better...
-       material
-       (three/ShaderMaterial.
-        (clj->js
-         {:uniforms        uniforms
-          :vertexShader    vertex-shader
-          :fragmentShader  fragment-shader
-          ; :side		          three/DoubleSide
-          :blending	       three/AdditiveBlending ;auto get rid of black. but hmm...
-          :transparent     true
-          :depthWrite      false}))] ;this should ensure were not incl in depth texture right??
-  material)) ;XXX clone material - can still have sep uniforms
-
-;welp clj only apparently...
-; (glsl/defglsl-file frag [] "resources/public/glsl/frag.glsl")
-
-(defn update-shader-async [ch material] ;vertexShader, fragmentShader... whatever else goes into ShaderMaterial.
- (log "Create shader updater")
- (go-loop []
-          (when-let [{:keys [kind text]} (<! ch)]
-           (log "Run update shader...")
-           ; (j/assoc! material
-           ;           (if (= kind :vert) :vertexShader :fragmentShader) text
-           ;           :needsUpdate true)
-           (doseq [[id {:keys [material]}] @spotlights] ;uuuugh i mean fast whatever just tots not elegant
-            (j/assoc! material
-                      (if (= kind :vert) :vertexShader :fragmentShader) text
-                      :needsUpdate true))
-           (recur)))
- (log "Shutdown shader updater..."))
-
-(declare load-model)
-
-(defn update-texture-matrix [tex-mat camera] ;XXX oh yeah move this to shader...
- (let [bias (doto (three/Matrix4.) ;maybe dont recreate each
-             (.set 0.5 0.0 0.0 0.0,  0.0 0.5 0.0 0.0,  0.0 0.0 0.5 0.0,  0.5 0.5 0.5 1.0))]
-  (doto tex-mat
-   (.set 1.0 0.0 0.0 0.0, 0.0 1.0 0.0 0.0,  0.0 0.0 1.0 0.0,  0.0 0.0 0.0 1.0) ;identity
-   ; (.set 0.5 0.0 0.0 0.5, 0.0 0.5 0.0 0.5,  0.0 0.0 0.5 0.5,  0.0 0.0 0.0 1.0)
-   ;  ^!! with this we can reach our depth tex, but it's offset and only fills lower 1/4
-   (.multiply (.-projectionMatrix   camera)) ;we have projection and camera in shader
-   (.multiply (.-matrixWorldInverse camera)) ;do we have?
-   #_(.multiply bias))))
-
-(def spot-cone-geom ;; at least this can be reused! except will likely want different sizes/lengths, def different angles...
- (let [[start-radius end-radius length] [0.20 3.0 18]]     ;;radius at thinnest, widest, length of cone
-  (doto (three/CylinderGeometry.
-         start-radius, end-radius, length, 64, 20, true)  ;;num polygons or w/e + true for open at cone end
-   (.applyMatrix (.makeTranslation (three/Matrix4.)  0 (/ length -2) 0))  ;; move half length so we're rotating from base and not middle
-   (.applyMatrix (.makeRotationX   (three/Matrix4.)  (/ js/Math.PI -2)))))) ;; rotate -90deg to bring us inline with light (XXX understanding why would be nice)
+(defonce ^{:doc "We shan't store our own shit in app-db (our updates aint in the VDOM) so"}
+ spotlights (atom {}))
+(def active-lights "Keep track of active (in-scene) lights. Need a system for swapping lights without .add/.remove"
+ (atom #{}))
+(def fixture-radius 0.2)
 
 
-(defn create-spot-cone "Should just run updater instead of setting values manually?"
- [id material light]
-  (let [geometry spot-cone-geom ;initially pivot point is at center, move it so is correct.
-        material (doto material ;; or skip setting these now as will be done at
-                  (j/update-in! [:uniforms :lightColor :value] j/call :copy (.-color light))
-                  (j/assoc-in!  [:uniforms :spotPosition :value]            (.-position light)))
-        mesh (doto (three/Mesh. geometry material)
-               (j/update! :position j/call :copy (.-position light))
-               (.lookAt (three/Vector3. 0 0 0))) ]
-
-    #_(j/assoc! light
-              :shadowCameraNear   0.01   :shadowCameraFar        15
-              :shadowCameraFov      45   :shadowCameraVisible  true
-              :shadowCameraLeft     -8   :shadowCameraRight       8
-              :shadowCameraTop       8   :shadowCameraBottom     -8
-              :shadowBias	         0.0   :shadowDarkness	       0.5
-              :shadowMapWidth	    1024   :shadowMapHeight	     1024)
-    {:material material :mesh mesh}))
-
-
-(defn create-spot-light "Actual light-source/emitter" [color]
-  (j/assoc! (three/SpotLight.) ;
-            :color       color ;
-            :intensity   3     ;use intensity (fraction) as dimmer?? else just opacity or
-            :castShadow  true  ; maybe should try having lots of light but skipping shadows?
-            :angle       (/ js/Math.PI 6)
-            :penumbra    0.70  ;0-1. Fraction of light softened
-            :decay       1.8   ;around 2 natural
-            ; :power     intensity * Pi when physically correct...
-            :distance    60))  ;max distance. default 0 (no limit)
-
-(defn create-spot-model "Fixture 3d model" [{:keys [x y z] :as data}]
-  (three/SphereGeometry. x y z))
-
-
-(defn get-renderer [& [w h]]
+(defn get-renderer "Init new renderer. We should maybe store these so avoids recreating..." [& [w h]]
  (doto (three/WebGLRenderer.)
   (.setPixelRatio (.-devicePixelRatio js/window))
   ; (.setClearColor 0x202020 0.5)
@@ -146,9 +64,29 @@
             :alpha         true) ;for transparent bg
   ; :toneMapping   three/ReinhardToneMapping
   ; :toneMappingExposure (Math/pow 1.4 5.0)
-
   (j/assoc-in! [:shadowMap :enabled] true)
   (j/assoc-in! [:shadowMap :type]    three/PCFSoftShadowMap)))
+
+(defn get-composer [[w h] renderer scene camera]
+ (doto (composer/EffectComposer. renderer)
+  (.addPass (rpass/RenderPass. scene camera))
+  ; (.addPass (doto (three/ShaderPass. three/AdditiveBlendingShader )
+  ;            (j/assoc-in! [:uniforms :tAdd :value] (.-texture occlusion-target))));
+  (.addPass (let [res (three/Vector2. w h) ; viewport resolution
+                  [strength radius threshold] [0.10 0.20 0.60]]
+             (j/assoc! (ubpass/UnrealBloomPass. res strength radius threshold)
+                       :renderToScreen true)))
+  ; (.addPass (j/assoc! (bokeh/BokehPass.
+  ;                      scene camera
+  ;                      (clj->js {:maxBlur 1.0
+  ;                                :width w :height h
+  ;                                :focus 1 :aperture 0.025}))
+  ;                     :renderToScreen true))
+  ; (.addPass (let [[noise [scan-pwr scan-count] grayscale]
+  ;                 [0.27 [0.00 0] false]]
+  ;            (j/assoc! (fpass/FilmPass. noise scan-pwr scan-count grayscale)
+  ;                     :renderToScreen true)))
+  ))
 
 
 (defn get-scene []
@@ -168,15 +106,224 @@
      (.lookAt (three/Vector3. xl yl zl)))))
 
 
-(defn floor []
-  (let [mat (doto (three/MeshPhongMaterial.)
-              (j/update! :color j/call :set 0x354570))
-        geo (three/PlaneBufferGeometry. 20 20 10 10)
-        mesh (doto (three/Mesh. geo mat)
-               (j/assoc-in! [:rotation :x] (* js/Math.PI -0.5))
-               (j/assoc!     :receiveShadow true)
-               (j/update!    :position j/call :set 0 -0.15 0))]
-    {:mat mat :geo geo :mesh mesh}))
+(defn depth-texture-target [[w h]]
+ (doto (three/WebGLRenderTarget. w h)
+  (j/assoc-in! [:texture :format]    three/RGBFormat)
+  ; (j/assoc-in! [:texture :minFilter] three/NearestFilter) ;default (and req for depth texture)
+  (j/assoc-in! [:texture :generateMipmaps] false) ;req for depth texture
+  (j/assoc! :stencilBuffer false
+            :depthBuffer   true
+            :depthTexture  (doto (three/DepthTexture.)
+                            (j/assoc! :type three/UnsignedShortType)))))
+
+
+; (def texture (.load (three/TextureLoader.) "PerlinNoise2d.png" ; "3d-models/graynoise.png"
+(def texture (.load (three/TextureLoader.)  "3d-models/graynoise.png"
+; (def texture (.load (three/TextureLoader.)  "3d-models/perlin.png"
+                    (fn [tex]
+                     (swap! globals assoc :fog-texture tex))))
+
+(defn volu-spot-material [& {:keys [camera d-target]}] ;or just fragment-shader etc (dont make new obj)
+ (let [vertex-shader   (get-in @globals [:shader :cone :vert]) ;or just 0 i guess uh
+       fragment-shader (get-in @globals [:shader :cone :frag]) ;temp for diag
+       ; fog-texture     (.load (three/TextureLoader.) "3d-models/graynoise.png") ;can also give callback, maybe better dunno
+       uniforms
+       {:near          {:value (.-near camera)}
+        :far           {:value (.-far  camera)}
+        :tDiffuse      {:value (.-texture      d-target)}
+        :tDepth        {:value (.-depthTexture d-target)}
+        ; :tFogNoise     {:type "t"  :value (.load (three/TextureLoader.) "img.jpg")}
+        :tFogNoise     {:type "t"  :value (:fog-texture @globals)}
+        :furthest      {:type "f"  :value 20.0}
+        :anglePower    {:type "f"  :value 3.5} ;looks nicer high but until fix weirdo camera angle stuff gotta keep low
+        :spotPosition  {:type "v3" :value (three/Vector3. 0 0 0)}
+        :lightColor    {:type "c"  :value (three/Color. "white")}
+        :time          {:type "f"  :value (- (.now js/Date.) 1550000000000)}
+        :opacity       {:type "f"  :value 0.56}
+        :cap           {:type "f"  :value 0.72} ;opacity 0.65 cap 0.60 quite nice but gotta fix so can see shit even when pointing my dir...
+        :dimmer        {:type "f"  :value 0.0 #_1.00}} ;oh right default 0.0 much better...
+       material
+       (three/ShaderMaterial.
+        (clj->js
+         {:uniforms        uniforms
+          :vertexShader    vertex-shader
+          :fragmentShader  fragment-shader
+          :side		          three/DoubleSide
+          :blending	       three/AdditiveBlending ;auto get rid of black. but hmm...
+          :transparent     true
+          :depthWrite      false}))] ;this should ensure were not incl in depth texture right??
+  material))
+
+;welp clj only apparently...
+; (glsl/defglsl-file frag [] "resources/public/glsl/frag.glsl")
+
+(defn update-shader-async [ch material] ;vertexShader, fragmentShader... whatever else goes into ShaderMaterial.
+ (log "Create shader updater")
+ (go-loop []
+          (when-let [{:keys [kind text]} (<! ch)]
+           (log "Run update shader...")
+           (swap! globals assoc-in [:shader :cone kind] text)
+           (doseq [[id {:keys [cone]}] @spotlights] ;uuuugh i mean fast whatever just tots not elegant
+            (j/assoc! (:material cone)
+                      (if (= kind :vert) :vertexShader :fragmentShader) text
+                      :needsUpdate true)
+            (j/assoc-in! (:material cone) [:uniforms :tFogNoise :value] (:fog-texture @globals)))
+           (recur)))
+ (log "Shutdown shader updater..."))
+
+(declare load-model)
+
+
+(def spot-cone-geom ;; at least this can be reused! except will likely want different sizes/lengths, def different angles...
+ (let [[start-radius end-radius length] [fixture-radius 3.6 18]]     ;;radius at thinnest, widest, length of cone
+  (doto (three/CylinderGeometry.
+         start-radius, end-radius, length, 64, 20, true)  ;;num polygons or w/e + true for open at cone end
+   (.applyMatrix (.makeTranslation (three/Matrix4.)  0 (/ length -2) 0))  ;; move half length so we're rotating from base and not middle
+   (.applyMatrix (.makeRotationX   (three/Matrix4.)  (/ js/Math.PI -2)))))) ;; rotate -90deg to bring us inline with light (XXX understanding why would be nice)
+
+
+(defn create-spot-cone "Should just run updater instead of setting values manually?"
+ [material light]
+  (let [geometry spot-cone-geom ;initially pivot point is at center, move it so is correct.
+        material (doto material ;; or skip setting these now as will be done at
+                  (j/assoc-in!  [:uniforms :spotPosition :value] (.-position light)))
+        mesh (doto (three/Mesh. geometry material)
+              (j/assoc! :castShadow    false
+                        :receiveShadow false))]
+    #_(j/assoc! light
+              :shadowCameraNear   0.01   :shadowCameraFar        15
+              :shadowCameraFov      45   :shadowCameraVisible  true
+              :shadowCameraLeft     -8   :shadowCameraRight       8
+              :shadowCameraTop       8   :shadowCameraBottom     -8
+              :shadowBias	         0.0   :shadowDarkness	       0.5
+              :shadowMapWidth	    1024   :shadowMapHeight	     1024)
+    {:material material :mesh mesh}))
+
+
+(defn create-spot-light "Actual light-source/emitter" [color]
+  (j/assoc! (three/SpotLight.) ;
+            :color       color ;
+            :intensity   3     ;use intensity (fraction) as dimmer?? else just opacity or
+            :castShadow  true  ; maybe should try having lots of light but skipping shadows?
+            :angle       (/ js/Math.PI 6)
+            :penumbra    0.78  ;0-1. Fraction of light softened
+            :decay       1.8   ;around 2 natural
+            ; :power     intensity * Pi when physically correct...
+            :distance    60))  ;max distance. default 0 (no limit)
+
+(defn create-spot-model "Fixture 3d model" [{:keys [x y z] :as data}]
+  (three/SphereGeometry. x y z))
+
+
+(defn glow-material
+ [light]
+ (let [vertex-shader   (get-in @globals [:shader :glow :vert]) ;or just 0 i guess uh
+       fragment-shader (get-in @globals [:shader :glow :frag]) ;temp for diag
+       uniforms
+       {:viewVector    {:value (.-position light)} ;matrixWorld for own mesh would be reasonable and not need uniform or?
+        :lightColor    {:type "c"  :value (three/Color. "black")}
+        :dimmer        {:type "f"  :value 0.0}
+        :powTo         {:type "f"  :value 4.0}} ;oh right default 0.0 much better...
+       material
+       (three/ShaderMaterial.
+        (clj->js
+         {:uniforms        uniforms
+          :vertexShader    vertex-shader
+          :fragmentShader  fragment-shader
+          :blending	       three/AdditiveBlending ;try to get rid of the black corners bleh!
+          :transparent     true
+          :depthWrite      false}))]
+  material))
+
+(defn create-spot-glow "Fixture glow plate"
+ [light]
+ (let [rad      (* 1.1 fixture-radius)
+       geometry (doto (three/SphereGeometry. rad 18 18)
+                 #_(.applyMatrix (.makeTranslation (three/Matrix4.)  0 (/ rad 2) 0))
+                 #_(.applyMatrix (.makeRotationX   (three/Matrix4.)  (/ js/Math.PI -2))))
+       material (glow-material light)
+       mesh     (doto (three/Mesh. geometry material)
+                 (j/assoc! :castShadow    false
+                           :receiveShadow false))]
+  {:material material :mesh mesh}))
+
+(defn create-spot-plate "Fixture plate"
+ [light]
+ (let [rad      (* 0.38 fixture-radius)
+       geometry (doto (three/SphereGeometry. rad 12 12)
+                 ; #_(.applyMatrix (.makeTranslation (three/Matrix4.)  0 (/ 0.1 2) 0))
+                 #_(.applyMatrix (.makeTranslation (three/Matrix4.)  0 (/ rad 2) 0))
+                 #_(.applyMatrix (.makeRotationX   (three/Matrix4.)  (/ js/Math.PI -2))))
+       material (doto (three/MeshLambertMaterial.)
+                 (j/update! :color j/call :set 0x151510))
+       mesh     (doto (three/Mesh. geometry material)
+                 (j/assoc! :castShadow    false
+                           :receiveShadow true))]
+  {:material material :mesh mesh}))
+
+
+(defn create-spot-group "Common group for cone, glow, model, so can control position and rotation at once?"
+ [light & objects]
+ (let [[cone glow plate] objects
+       group (three/Group.)]
+  (doto group
+   (.add (:mesh cone))
+   (.add (:mesh glow))
+   (.add (:mesh plate))
+   (.lookAt (three/Vector3. 0 0 0))
+   (j/update! :position j/call :copy (.-position light)))))
+
+
+(defn toggle-spotlight!
+ [state scene {:as fixture-data :keys [light helper group cone glow]}]
+ (let [show-helper false
+       use-light false] ;should calculate based on lots of stuff. what kinda fixture, strength, amount already lit, yada. first throttle shadows, then quit light, keeping cones...
+  (case state
+   :on (when-not false ;(some #{(:id fixture)} @active-lights)
+        ; (swap! active-lights conj (:id fixture))
+        (doto scene
+         (.add (.-target light)) ;; need to add light's .-target to scene to use it as reference (wont auto-update otherwise)
+         (.add group))
+        (when show-helper (.add scene helper))
+        (when use-light   (.add scene light)))        ;; debug - lines showing where light is pointed
+   ;; add light itself to scene - will have to limit for performance...
+
+   :off (when true ;(some #{(:id fixture)} @active-lights)
+         ; (swap! active-lights disj (:id fixture))
+         (doto scene
+          (.remove (.-target light))
+          (.remove group))
+         (when show-helper (.remove scene helper))
+         (when use-light   (.remove scene light))))))
+
+(defn toggle-just-light!
+ [state scene {:as data :keys [light fixture]}]
+ (case state
+  :on (when (and (> 6 (count @active-lights))
+                 (not (some #{(:id fixture)} @active-lights)))
+        (swap! active-lights conj (:id fixture))
+        (.add scene light))        ;; debug - lines showing where light is pointed
+   :off nil)) ;cant be removing from scene, stutters like madd
+
+
+(defn init-spotlights-clean! [s scene camera d-target fixtures]
+ (let [cone-material (volu-spot-material :camera camera :d-target d-target)]
+  (doseq [[id {:keys [id x y z] :as fixture}] fixtures
+          :let [cone-material (volu-spot-material :camera camera :d-target d-target)]] ;FRIENDLY REMINDER THAT CLONE MAKES DEPTH TEXTURE STOP WORKING
+   (let [light  (doto (create-spot-light (three/Color. 0.0 0.0 0.0)) ;p useless creating light itself when still black? hmm
+                 (j/update! :position j/call :set x y z)) ;XXX get/setup initial rotation of fixture!!
+         cone   (create-spot-cone cone-material light)
+         glow   (create-spot-glow light) ;prob just clone these...
+         plate  (create-spot-plate light)
+         group  (create-spot-group light cone glow plate)
+         ; model  (load-model group :moving-head "/3d-models/moving_head.dae" [0 0 0])
+         helper (three/SpotLightHelper. light)
+         data {:fixture fixture :light light :helper helper
+               :group group :glow glow :cone cone :plate plate}]
+    (toggle-spotlight! :on scene data)
+    (swap! spotlights assoc id data)))))
+
+
 
 (defn box []
   (let [mat (three/MeshPhongMaterial. #js {:color 0x8982a8})
@@ -185,7 +332,7 @@
                (j/assoc! :castShadow    true
                          :receiveShadow true)
                (j/update! :position j/call :set 0 1 0))]
-    {:mat mat :geo geo :mesh mesh}))
+    {:material mat :geometry geo :mesh mesh}))
 
 ; (defn create-mesh [color {:as geom :keys [w h d]} mesh-opts [x y z :as position]]
 ;   (let [mat (three/MeshPhongMaterial. #js {:color color})
@@ -195,142 +342,58 @@
 ;                (j/update! :position j/call :set x y z))]
 ;     {:mat mat :geo geo :mesh mesh}))
 
-(defn create-wall [#_scene side]
+(defn create-wall [side]
   (let [geometry  (three/BoxGeometry. 20, 20.0, 5, 5, 10, 5);
         material	(three/MeshPhongMaterial.
                    #js {:color (three/Color. 0x304045)})
         mesh	    (doto (three/Mesh. geometry material)
-                    (j/assoc! ;:receiveShadow	true
+                    (j/assoc! :receiveShadow	true
                               :castShadow		  true
                               :rotateX       (/ js/Math.PI 2))
                     (j/update! :position j/call :set
                                0 (/ (-> geometry .-parameters .-height) -2) -1))]
-    ; (.add scene mesh)
     mesh))
 
 ; (def loading-manager
 ;  (three/LoadingManager. (fn [] :wtfthisfor)))
+(defn load-model [parent id file-path [x y z]] ;scene or group or w/e
+ (if-let [model (get-in @globals [:models id])]
+  (.add parent (.-scene model)) ;already loaded
+  (doto (collada/ColladaLoader.) ;should reuse i guess...
+   (.load file-path
+          (fn [model]
+           (log :debug "Loaded model" id)
+           (let [loaded (.-scene model)
+                 local (three/Object3D.)]
+            (doto local ; (j/update! :position j/call :set 20 0 -20)
+             )
+            (doto loaded
+             (j/assoc! :receiveShadow	true :castShadow		  true)
+             (j/update! :position j/call :set x y z)
+             #_(j/update! :scale j/call :set 0.5 0.5 0.5)) ;gets super fucked hmm
+            ; (swap! s assoc-in [:models id] model #_loaded) ;hmmm get stackoverflow trying to access from repl later heh
+            (.add parent loaded)
+            (swap! globals assoc-in [:models id] model))))))) ;could also pass a ch and async... cleaner?
 
-(defn load-model [s id file-path [x y z]]
- (doto (collada/ColladaLoader.) ;should reuse i guess...
-  (.load file-path
-         (fn [model]
-          (log :debug "Loaded model" id)
-          (let [loaded (.-scene model)
-                local (three/Object3D.)]
-           (doto local ; (j/update! :position j/call :set 20 0 -20)
-            )
-           (doto loaded
-            (j/assoc! :receiveShadow	true
-                      :castShadow		  true)
-            (j/update! :position j/call :set x y z)
-            #_(j/update! :scale j/call :set 0.5 0.5 0.5)) ;gets super fucked hmm
-           ; (swap! s assoc-in [:models id] model #_loaded) ;hmmm
-           (doseq [scene-path (:scenes @s)]
-            (.add (get-in @s scene-path) loaded))))))) ;could also pass a ch and async... cleaner?
-
-
-(defn flat-mat [target proj-cam]
- (let [cam (three/OrthographicCamera. -1 1 1, -1 0 1)
-       scene (three/Scene.)
-       mat (volu-spot-material :camera proj-cam :d-target target)
-       quad (three/Mesh. (three/PlaneBufferGeometry. 2 2) mat)]
-  (.add scene quad)
-  {:material mat :mesh quad :scene scene :camera cam}))
-
-
-(defn composer [[w h] renderer scene camera]
- (doto (composer/EffectComposer. renderer)
-  (.addPass (rpass/RenderPass. scene camera))
-  (.addPass (let [res (three/Vector2. w h) ; viewport resolution
-                  [strength radius threshold] [0.13 0.25 0.50]]
-             (j/assoc! (ubpass/UnrealBloomPass. res strength radius threshold)
-                       :renderToScreen true)))
-  ; (.addPass (j/assoc! (bokeh/BokehPass.
-  ;                      scene camera
-  ;                      (clj->js {:maxBlur 1.0
-  ;                                :width w :height h
-  ;                                :focus 1 :aperture 0.025}))
-  ;                     :renderToScreen true))
-  ; (.addPass (let [[noise [scan-pwr scan-count] grayscale]
-  ;                 [0.27 [0.00 0] false]]
-  ;            (j/assoc! (fpass/FilmPass. noise scan-pwr scan-count grayscale)
-  ;                     :renderToScreen true)))
-  ))
+; (defn flat-mat [target proj-cam]
+;  (let [cam (three/OrthographicCamera. -1 1 1, -1 0 1)
+;        scene (three/Scene.)
+;        mat (volu-spot-material :camera proj-cam :d-target target)
+;        quad (three/Mesh. (three/PlaneBufferGeometry. 2 2) mat)]
+;   (.add scene quad)
+;   {:material mat :mesh quad :scene scene :camera cam}))
 
 
 (defn create-fogger []) ;realized maybe small particles best for catching beam but still passing through?
 (defn create-background-fog [])
 
-(def spotlights    (atom {}))
-(def active-lights (atom #{}))
 
-(defn toggle-spotlight!
- [state scene {:as fixture-data :keys [light mesh helper fixture #_glow]}]
- (let [show-helper false
-       use-light false] ;should calculate based on lots of stuff. what kinda fixture, strength, amount already lit, yada. first throttle shadows, then quit light, keeping cones...
-  (case state
-   :on (when-not false ;(some #{(:id fixture)} @active-lights)
-        ; (swap! active-lights conj (:id fixture))
-        (doto scene
-         (.add (.-target light)) ;; need to add light's .-target to scene to use it as reference (wont auto-update otherwise)
-         (.add mesh)     ;; add cone to scene
-         #_(.add glow))
-        (when show-helper (.add scene helper))
-        (when use-light   (.add scene light)))        ;; debug - lines showing where light is pointed
-   ;; add light itself to scene - will have to limit for performance...
-
-   :off (when true ;(some #{(:id fixture)} @active-lights)
-         ; (swap! active-lights disj (:id fixture))
-         (doto scene
-          (.remove (.-target light))
-          (.remove mesh))
-         (when show-helper (.remove scene helper))
-         (when use-light   (.remove scene light))))))
-
-(defn toggle-just-light!
- [state scene {:as data :keys [light mesh helper fixture]}]
- (case state
-  :on (when (and (> 6 (count @active-lights))
-                 (not (some #{(:id fixture)} @active-lights)))
-        (swap! active-lights conj (:id fixture))
-        (.add scene light))        ;; debug - lines showing where light is pointed
-   ;; add light itself to scene - will have to limit for performance...
-   :off nil ;cant be removing from scene, stutters like madd
-   ))
-
-(defn init-spotlights-clean! [scene camera d-target fixtures]
- (let [fixtures (into {} (for [{:keys [x y z id] :as fixture} (vals fixtures)]
-                          {id (assoc fixture
-                                     :color [0.0 0.0 0.0] ;just test, should be none on init...
-                                     :position [x y z])}))
-       master-material (volu-spot-material :camera camera :d-target d-target)]
-  (doseq [[id {:keys [color id x y z] :as fixture}] fixtures
-          ; :let [material (.clone master-material) ;man seemed to work first then no??
-          :let [material (volu-spot-material :camera camera :d-target d-target) ;man seemed to work first then no??
-                [h s l] color]] ;better off reducing first here btw
-   (let [light  (doto (create-spot-light (three/Color. h s l)) ;p useless creating light itself when still black? hmm
-                 (j/update! :position j/call :set x y z))
-         cone   (create-spot-cone id material light)
-         ; model (load-model! "/3d-models/moving_head.dae" scene [0 0 0])
-         helper (three/SpotLightHelper. light)
-         ; glow   (create-spot-glow id)
-         data {:fixture fixture :light light :helper helper ;:glow glow
-               ; :material (:material cone) :mesh (:mesh cone)}]
-               :material material :mesh (:mesh cone)}]
-    ; model (create-spot-model :...)
-    (toggle-spotlight! :on scene data)
-    (swap! spotlights assoc id data)))
-  master-material)) ;so should just return everything then store in db or keep mutable stuff away from there i guess..
-
-
-(defn load-physical! [s #_scenes] ;whoops change so its all going to s...
+(defn load-physical! [s] ;whoops change so its all going to s...
  (let [wall (create-wall 0)
        box (:mesh (box))]
-  (load-model s :warehouse "/3d-models/WAREHOUSE/model.dae" [-40 -18 8])
-  (load-model s :truss     "/3d-models/truss/model.dae"     [1    0 0.5])
-  (load-model s :pallet    "/3d-models/pallet.dae"          [0   0  0])
-  ; (load-model s :stage     "/3d-models/stage.dae"           [0   -2 0]))
+  (load-model (:scene @s) #_s :warehouse "/3d-models/WAREHOUSE/model.dae" [-40 -18 8])
+  (load-model (:scene @s) #_s :truss     "/3d-models/truss/model.dae"     [1    0 0.5])
+  (load-model (:scene @s) #_s :pallet    "/3d-models/pallet.dae"          [0   0  0])
   {:wall wall :box box}))
 
 
@@ -371,6 +434,27 @@
 (defn update-uniform [material k value]
  (j/assoc-in! material [:uniforms k :value] value))
 
+
+(defn update-each-frame [camera scene spotlights started-at]
+  ; (.update js/TWEEN)
+  (let [elapsed-all (- (.now js/Date.) started-at)]
+   (doseq [[id {:keys [light helper glow cone] :as data}] spotlights]
+    (when helper (.update helper))
+    (when cone
+     (let [now (/ (.now js/Date.) 156000000)]
+      ; (update-uniform (:material cone) :time now)))
+      ; (update-uniform (:material cone) :time (Math/sin (.now js/Date.)))))
+      ; (update-uniform (:material cone) :time elapsed-all)))
+      (update-uniform (:material cone) :time (/ elapsed-all 10000 #_1000))))
+    (when glow
+     (let [;glow-pos (three/Vector3.)
+           ; _ (.getWorldPosition (:mesh glow) glow-pos)
+           viewV (doto (three/Vector3.)
+                  (.subVectors (.-position camera) ;would only need update on camera movement. also couldn't do in-shader??
+                               (.-position light)))]
+      (update-uniform (:material glow) :viewVector viewV))))
+   elapsed-all))
+
 (defn fixture-updater "Async update. Take each updated value and update :fixtures, but also uniforms etc depending on content"
  ; also should do away with (:fixtures @spotlight) and just use app-db?
  ; and just custom sub to transform eg color format?
@@ -380,11 +464,16 @@
  (log "Create fixture updater")
  (go-loop [] ;thing now is we're not updating :fixtures so cant rely on it. but initial state + incoming + app-db plenty heh
           (when-let [{:keys [id color lookat dimmer strobe] :as fixture} (<! ch)] ;tho guess no reason to actually close this ever?
-           (when-some [{:keys [fixture light mesh material] :as data} (get @spotlights id)]
+           (when-some [{:keys [fixture light group cone glow plate] :as data} (get @spotlights id)]
 
             (when dimmer
              (j/assoc! light :intensity (* 2 dimmer))
-             (update-uniform material :dimmer dimmer)
+             (update-uniform (:material cone) :dimmer dimmer)
+             (update-uniform (:material glow) :dimmer dimmer)
+             (j/assoc! (:material plate) :emissiveIntensity dimmer)
+             (let [dimmed-color (doto (.clone (.-color light))
+                                 (.multiplyScalar dimmer))]
+              (j/update! (:material plate) :color j/call :copy dimmed-color))
              (let [state (if (pos? dimmer) :on :off)]
               (toggle-just-light! state (:scene @s) data)))
 
@@ -394,31 +483,16 @@
               (try (j/update! light  :color j/call :setHSL h s l)
                    (catch js/TypeError e
                     (j/assoc! light :color (doto (three/Color.) (.setHSL h s l)))))
-              (update-uniform material :lightColor (.-color light))) ;also dont forget to call whatever thing ends up toggling lights eventually
+              (j/update! (:material plate) :emissive j/call :copy (.-color light))
+              (update-uniform (:material glow) :lightColor (.-color light))
+              (update-uniform (:material cone) :lightColor (.-color light))) ;also dont forget to call whatever thing ends up toggling lights eventually
 
              (when-let [[x y z] lookat]
               (j/update-in! light [:target :position] j/call :set x y z)
-              (.lookAt mesh (-> light .-target .-position))))) ;whoops dont shut down unless passed false
+              (.lookAt group (-> light .-target .-position))))) ;whoops dont shut down unless passed false
 
            (recur)))
  (log "Shutdown fixture updater"))
-
-
-(defn update-each-frame [camera scene]
-  ; (.update js/TWEEN)
-  (doseq [[id {:keys [fixture light helper mesh material] :as data}] @spotlights]
-    (when helper (.update helper))))
-
-
-
-(defn set-depth-uniforms! "Hmm guess will always have to be per cloned material? Btw could I somehow set once by pointer then just read?"
- [tex-mat]
-  (doseq [[id {:keys [material]}] @spotlights]
-   (doto material ;XXX ah!! skip update for turned-off lights duh
-      (j/update-in! [:uniforms :textureMatrix :value] j/call :copy tex-mat))
-    #_(when (pos? (j/get-in material [:uniforms :dimmer :value])); can we read dimmer easily from uniform or hmm
-     (doto material ;XXX ah!! skip update for turned-off lights duh
-      (j/update-in! [:uniforms :textureMatrix :value] j/call :copy tex-mat)))))
 
 
 
@@ -426,12 +500,9 @@
  (map #(j/get js/window %) [:innerWidth :innerHeight]))
 
 (defn render-depth [s] ;this doesn't seem to be taking anymore?
- (let [{:keys [camera depth renderer]} @s]
+ (let [{:keys [camera depth renderer scene]} @s]
   (.setRenderTarget renderer (:target depth))
-  (.render renderer (:scene depth) camera) ;render depth texture
-  ; (.render renderer (:scene @s) camera) ;render depth texture
-  (update-texture-matrix (:textureM depth) camera)
-  (set-depth-uniforms! (:textureM depth))
+  (.render renderer scene camera) ;render depth texture. I was wrong thinking should (even can) have sep scene have sep scenes. adding to one removes from other, so...
   ; (.render (-> @s :post :scene) (-> @s :post :camera)))
   ))
 
@@ -464,25 +535,18 @@
           (j/assoc! (:camera @s) :aspect (apply / @real-size))
           (.updateProjectionMatrix (:camera @s)))
 
-         (start-render [] ;does requestAnimationFrame send now or how works??
+         (start-render []
           (let [delta (.getDelta (:clock @s))]
-           #_(if-not (util/element-in-view? (.-domElement (:renderer @s)))
-            (do (playback! :pause)
-                (swap! s assoc :auto-play true)) ;auto paused so should auto resume...
-            ; q is how! gotta hook scroll or. use on-click for now...
-)
+           (.update (:controls @s)) ; required if controls.enableDamping or controls.autoRotate are set to true
+           ; XXX best way to throttle when little or nothing happening?
+           ; but also like no lights on just wait for something to happen...
 
-            (do (.update (:controls @s)) ; required if controls.enableDamping or controls.autoRotate are set to true
-                ; XXX best way to throttle when little or nothing happening?
-                ; def when show not running.
-                ; but also like no lights on just wait for something to happen...
+           (update-each-frame (:camera @s) (:scene @s) @(:spotlights @s) (:started-at @s))
+           (render-depth s) ;try sep what's specific to viz
+           (try (.render (:composer @s)) (catch js/TypeError t)) ;does weird things in beginning. shader not ready?
+           ; (.setRenderTarget (:renderer @s) nil) (.render (:renderer @s) (:scene @s) (:camera @s))
 
-                (update-each-frame (:camera @s) (:scene @s)) ;not sure if this takes long
-                (render-depth s) ;try sep what's specific to viz
-                (try (.render (:composer @s)) (catch js/TypeError t)) ;does weird things in beginning. shader not ready?
-                ; (.setRenderTarget (:renderer @s) nil) (.render (:renderer @s) (:scene @s) (:camera @s))
-
-                (swap! s assoc :anim-id (.requestAnimationFrame js/window start-render))))) ;some ex has theirs at top of render?
+           (swap! s assoc :anim-id (.requestAnimationFrame js/window start-render)))) ;some ex has theirs at top of render?
 
 
          (playback! [state] ;play pause etc fix
@@ -511,43 +575,41 @@
            (swap! s assoc :running state))))
 
          (on-mount [this] (log "Mounting three component")
-          (let [scenes [[:depth :scene] [:scene]]]
+          (let []
            (swap! s assoc ;change to let then swap heh...
                   :renderer (get-renderer)
                   :camera   (get-camera :position [0 5 -6])
                   :scene    (get-scene))
            (swap! s assoc
-                  :controls  (doto (orbit/OrbitControls. (:camera @s) (.-domElement (:renderer @s)))
+                  :controls  (doto (orbit/OrbitControls. ;this is stealing arrow keys even when not selected...
+                                    (:camera @s)
+                                    (.-domElement (:renderer @s)))
                               (j/update! :target j/call :set 0 2 0))
                   :clock     (three/Clock.)
+                  :started-at (.now js/Date.)
 
-                  :depth {:target   (depth-texture-target [600 450]) ;w/h will be resized. needs to be created before on-size...
-                          :scene    (get-scene)
-                          :textureM (three/Matrix4.)}
-                  :composer  (composer [600 450] (:renderer @s) (:scene @s) (:camera @s))
-                  :scenes    scenes) ;then can use that when passing s to loader cb closure hmm
+                  :depth {:target   (depth-texture-target [600 450])} ;w/h will be resized. needs to be created before on-size...
+                  :composer  (get-composer [600 450] (:renderer @s) (:scene @s) (:camera @s))) ;then can use that when passing s to loader cb closure hmm
            (swap! s assoc
-                  :models    (load-physical! s))
+                  :models    (load-physical! s)
+                  :spotlights spotlights)
 
            (.addEventListener js/window "resize" on-size)
            (on-size) ;run once manually to init window size...
 
            ; (swap! s assoc :post (flat-mat (:depth-target @s) (:camera @s)))
-           (doseq [scene (mapv (partial get-in @s) (:scenes @s))
-                   obj (vals (:models @s))]
-            (log :debug "Add obj" obj "scene" scene)
-            (.add scene obj)) ;but will only contain the meshes...
+           (doseq [obj (vals (:models @s))] ;add basic meshes to main scene
+            (.add (:scene @s) obj)) ;will only contain the meshes...
+
            (init-general-lights! (:scene @s))
-           (swap! s assoc :cone-material ;bleh doesnt work like I thought?
-                  (init-spotlights-clean! (:scene @s) (:camera @s) ; problem - we need ze shader...
-                                          (-> @s :depth :target)
-                                          @(rf/subscribe [:get :fixtures])))
+           (init-spotlights-clean! s (:scene @s) (:camera @s)
+                                   (-> @s :depth :target)
+                                   @(rf/subscribe [:get :fixtures]))
 
            (.appendChild (:div-ref @s) (.-domElement (:renderer @s)))  ;; Put canvas as child of main div. saw something .replaceChild?
            (start-observer playback!) ;auto pause/play depending on visibility
            (log "Done mount, start rendering...")
-           (playback! :play)
-           #_(.setTimeout js/window #(playback! :play) 2000))) ;start running after a delay, hack
+           (playback! :play)))
 
 
          (on-unmount [this] (log "Unmounting three component")
@@ -558,7 +620,6 @@
           (.dispose (:scene @s))
           (.dispose (:controls @s)))
 
-         ;hmm sending fixtures bit useless when wont update properly in that sense...
          (r-render [w ratio]  (log "Render div THREE")
           (swap! s assoc :req-size [w (/ w ratio)])
           (let [[w h] (update-real-size!)] ;dont need to deref real-size as fn does that
@@ -566,12 +627,13 @@
                         :ref #(swap! s assoc :div-ref %)}]))
 
          (start-observer [playback-fn] ;what's with the weird scrolling bug?
-          (doto (js/IntersectionObserver.
+          (doto (js/IntersectionObserver. ;prob needs tearing down for reload or?
                  (fn [entries]
                   (let [pos (.-intersectionRatio (first entries))]
                    (playback-fn (if (zero? pos) ;turns 0 both above and below!
                                  :pause :play)))))
            (.observe (:div-ref @s))))]
+
   (r/create-class
    {:display-name "three"
     :component-did-mount    on-mount
