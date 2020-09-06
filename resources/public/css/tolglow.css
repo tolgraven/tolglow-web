@@ -1,46 +1,42 @@
-/* Bootstrap Toggle v2.2.2 corrections for Bootstrap 4*/
-.toggle-off { box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125); }
-.toggle.off { border-color: rgba(0, 0, 0, .25); }
-.toggle-handle { background-color: white; border: thin rgba(0, 0, 0, .25) solid; }
+/*
+ *  Main tolglow css. Should continue to be organized towards putting all
+ *  components in own files, this one strictly imports and main styling.
+ *  Then move to SASS...
+ */
+
+@import './tolglow/cue-grid.css';
+
+@import './tolglow/cue-var-control.css';
+
+@import './tolglow/native-inputs.css';
+@import './tolglow/mods.css';
+
 
 .noselect { -webkit-touch-callout: none; /* iOS Safari */ -webkit-user-select: none; /* Safari */ -khtml-user-select: none; /* Konqueror HTML */ -moz-user-select: none; /* Firefox */ -ms-user-select: none; /* Internet Explorer/Edge */ user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */ }
 
 ::-webkit-scrollbar {
   /* all: initial; */
   /* all: unset; */
-  /* prob time to give up on re-com it does far too much bs... */
-  /* because now im hiding even the default scrollbar... */
+  /* prob time to give up on re-com it does far too much bs... */ /* because now im hiding even the default scrollbar... */
   width: 0px;
+  height: 1px !important;
 }
-input[type=range] {
-    -webkit-appearance: none;
-    /* background-color: rgb(80, 60, 70, 0.5); */
-    background-image: linear-gradient(rgba(30, 30, 30, 0.6), rgba(50, 20, 20, 0.5));
-    opacity: 0.7;
-    height: 25px;
-    /* width: 200px; */
-}
-input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    background-color: rgb(30, 30, 30, 0.7);
-    width: 10px;
-    height: 30px; /*100%; cant use % */
-}
-input[type=range]:focus {
-  outline: 0px;
-  box-shadow: inset 0px 0px 1px 2px rgb(30, 30, 30, 0.8);
-}
-:root{
-    --faint-border: rgb(30, 30, 30, 0.5);
-    --faint-bg: rgb(30, 30, 30, 0.15);
-    --nav-height: 25px;
-    --danger: #dc8075;
+:root { /* Variables */
+    --faint-border:     rgba(30, 30, 30, 0.5);
+    --faint-bg:         rgba(30, 30, 30, 0.15);
+    --nav-height:       25px;
+    --danger:           #dc8075;
+    --cue-cell-height:  45px;
+
+    --message-error:    rgba(230, 64,  72,  0.5);
+    --message-warning:  rgba(224, 143, 62,  0.5);
+    --message-info:     rgba(189, 172, 188, 0.5);
 }
 body {
-    transition: 0.3s;
+    /* transition: 0.3s; */
     background-color: #2a2829;
     color: #d5ccbf;
-    line-height: 1.3;
+    line-height: 1.2;
     font-size: 13px;
     text-align: center;
     max-width: 100%; /* prevent "nothing's actually there but allow me to let you nudge sideways anyways"" */
@@ -54,8 +50,11 @@ pre {
     text-align: left;
     font-size: 11px;
 }
-span::first-letter { font-size: 110%; }
+div { /* dont understand how this has higher selectivity than direct style in div?? */
+  /* color: #d5ccbf; */ /* only wanted it as fallback */
+}
 
+span::first-letter { font-size: 110%; }
 span[data-descr] {
   position: relative;
   text-decoration: underline;
@@ -79,8 +78,7 @@ span[data-descr]:hover::after {
   z-index: 100;
 }
 .naver > a {
-  /* padding: 5px 15px; */
-  padding: 5px 7px;
+  padding: 0.4rem 0.5rem;
 }
 .naver > a:hover {
   filter: brightness(120%);
@@ -89,7 +87,7 @@ span[data-descr]:hover::after {
 .nav-bar-fill {
  height: var(--nav-height);
 }
-/* .show-control { */
+
 
 .CodeMirror {
   /* padding-bottom: 3px; /1* text cuts off in input otherwise... *1/ */
@@ -100,138 +98,8 @@ span[data-descr]:hover::after {
   margin: 0px 0px -4px 0px;
 }
 
-.cue-page {
-  /* display: flex; /1* this prob good idea then wouldnt have to divide the items themselves at all *1/ */
-  /* flex-wrap: row wrap; /1* also remember order prop, could use *1/ */
-  /* display: block !important; /1* ensure rows are separated *1/ */
+/* @import './tolglow/cue-grid.css'; */
 
-    text-align: center;
-    margin-top: 6px;
-    margin-bottom: 6px;
-    padding: 2px 2px; /* why is 2/0 even?? */
-    /* border: 1px solid #678; */
-    border: 1px solid rgb(100, 110, 130, 0.5);
-    background-color: #282f32;
-}
-.cue-row {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  /* margin-right: 2px; /1* here's why *1/ */
-  /* margin-left: 2px; */
-}
-/* .cue-page { /1*  new  *1/ */
-/*   flex: 0 1 auto; */
-/*   display: flex; */
-/*   flex-direction: row; */
-/*   flex-wrap: wrap; */
-/*   /1* display: block !important; /2* ensure rows are separated *2/ *1/ */
-
-/*     text-align: center; */
-/*     /1* margin-top: 6px; *1/ */
-/*     /1* margin-bottom: 6px; *1/ */
-/*     /1* padding: 2px 2px; /2* why is 2/0 even?? *2/ *1/ */
-/*     /1* /2* border: 1px solid #678; *2/ *1/ */
-/*     /1* border: 1px solid rgb(100, 110, 130, 0.5); *1/ */
-/*     background-color: #282f32; */
-/* } */
-
-.cue-cell {
-    /* border: 0.5px solid rgb(70, 80, 90, 0.2); /1* makes -within smaller and not proper centered... *1/ */
-    border: 0.5px solid rgb(40, 40, 40, 0.5); /* makes -within smaller and not proper centered... */
-    /* border: 1.0px solid rgb(70, 80, 90, 0.2); /1* makes -within smaller and not proper centered... *1/ */
-    /* border: 1.0px solid rgb(40, 40, 40, 0.5); /1* makes -within smaller and not proper centered... *1/ */
-    /*/1** not sure what 0.5px border is?  not always 2px / half "1px". pretty nice, when it works... */
-    /* outline: 0.5px solid rgb(30, 30, 30, 0.7); /1* doesnt seem to respect z *1/ */
-    /* margin: 0.5px 0.5px; */
-    /* inner box shadow would be best but no go (-within is in front...) */
-    border-radius: 3px;
-    width: 60px;
-    height: 50px;
-    /* box-shadow: 4px 3px 10px 3px rgb(50, 50, 30, 0.9); */
-    /* box-shadow: inset 4px 3px 10px 3px rgb(50, 50, 30, 0.9); */
-    /* box-shadow: inset 0px 0px 0px 1px rgb(30, 30, 30, 0.9); */
-}
-
-.cue-cell-within {
-    transition: 0.2s ease-out, background-color 0.4s ease-in-out;
-    min-width: 90%; /*trying to get it to wrap*/
-    border-radius: 3px;
-    height: 100%;
-    font-size: 85%;
-    position: relative; /* needed for z-index */
-    /* top: -0.5px; /1* might be off now was for 0.5px cue-cell border but thats not working anymore... *1/ */
-    /* left: -0.5px; */
-    top: -0.25px; /* might be off now was for 0.5px cue-cell border but thats not working anymore... */
-    left: -0.25px;
-    cursor: pointer;
-    line-height: 1.0;
-
-  flex: 0 1 auto;
-  justify-content: center;
-  align-items: center;
-  display: flex;
-    word-wrap: break-word; /* seems to work with flex */
-    /* but how avoid 1 char break, and overflow? */
-    overflow-wrap: break-word;
-    overflow: hidden;
-    /* word-break: break-all; /1* sucks *1/ */
-}
-.cue-cell-within:hover {
-    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
-    z-index: 2;
-    filter: brightness(117%); /* background-color: #ccc !important; /1* ugly I guess but how else override inline? other option is handling hover in code... *1/ */
-    transform: scale(1.07);
-}
-/* .cue-cell-within:hover::after { /*so this works but i mean doesn't select the parent, just creates a new element... *1/ */
-/*     content: ""; */
-/* } */
-.cue-cell-within:active { /* should be used to indicate click-and-drag */
-    box-shadow: 0px 0px 0px 3px rgb(160, 180, 190, 0.85); /*instead of outline, for rounded corners*/
-    z-index: 2;
-    filter: brightness(132%); /* background-color: #fff !important; */
-    transform: scale(1.14);
-}
-.cue-cell-running {
-  border-radius: 30px;
-  /* transform: scaleY(1.020); */
-  /* transform: rotate3d(1, 0, 0, -15deg); */
-}
-/* .cue-cell-running-bg { ;in case get any good ideas... */
-  /* background: #444; */
-/* } */
-.cue-cell-flat { /* for when toggled flat design on */
-  border-radius: 0px !important;
-  border: 0px !important;
-  margin: 0px !important;
-}
-.cue-cell-text {
-  max-width: 82%; /* either this or pad I guess */
-  font-size: 12px; /* one of those things completely fucked desktop vs mobile... */
-}
-  /* transform: scale(80%); /1* doesnt work, why? *1/ */
-    /* box-shadow: 0px 1px 9px 8px rgb(60, 80, 90, 0.06); /*instead of outline, for rounded corners*/*/
-.cue-cell-droppable {
-    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
-    z-index: 2;
-}
-
-.cue-cell-empty {
-    height: 100%;
-    border-radius: 2px;
-    border: 1px solid rgb(30, 30, 30, 0.40);
-    background-image: radial-gradient(#282f31, #262c30);
-    box-shadow: 4px 3px 10px 3px rgb(40, 40, 50, 0.4);
-    position: relative;
-    top: -0.25px; /* might be off now was for 0.5px cue-cell border but thats not working anymore... */
-    /* left: -0.25px; */
-}
-.cue-cell-empty-saveable:hover {
-    position: relative; /* needed for z-index */
-    z-index: 2;
-    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
-}
 
 .cue-list {
     margin: 10px 5px 10px 5px;
@@ -294,17 +162,6 @@ span[data-descr]:hover::after {
   filter: brightness(85%);
 }
 
-.parent-of-wrapping {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-}
-.child-that-wraps {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  min-width: 50%;
-}
-
 .effect-row {
     display: flex; /* test */
     justify-content: space-between;
@@ -324,6 +181,13 @@ span[data-descr]:hover::after {
   max-height: 50px; /* should set like one line font size or? */
   transition: 0.2s ease-out, background-color 1s ease-in-out, max-height 0.3s cubic-bezier(0, 0.9, 0, 0.9);
 }
+.effect-row-undocked {
+  position: fixed;
+  width: 100%;
+  box-shadow: 2px -3px 7px 2px rgb(30, 30, 30, 0.20);
+  /* position: sticky; */
+  z-index: 100;
+}
 .effect-row:hover { /* doesnt appear to apply to bg-color transition time so */
     filter: brightness(120%); /* background-color: rgb(100, 100, 100, 0.5); */
 }
@@ -338,7 +202,6 @@ span[data-descr]:hover::after {
 /*  article[data-columns='3'] { width: 400px; } */
 /*  article[data-columns='4'] { width: 600px; } */
 }
-
 
 .collapsable-section { /* height transition test */
     overflow: hidden;
@@ -374,17 +237,17 @@ span[data-descr]:hover::after {
   margin: 3px 1px;
 }
 .effect-info-line1 > div {
-  /* margin: 0px 3px; */
-  /* margin-right: 3px; */
   text-align: left;
 }
 .effect-info-name {
-  margin-left: 5px;
+  /* margin-left: 5px; */
+  margin-left: 0.3em;
 }
 
 .effect-info-line2 {
-  text-align: left;
+  /* text-align: left; */
 }
+
 .effect-row-buttons { /* ideally: wrap *if container multiline* else no
     /* display: flex; /1* test *1/ */
     /* flex-flow: column wrap; */
@@ -404,12 +267,18 @@ span[data-descr]:hover::after {
   font-size: 14px;
   box-shadow: 8px 6px 10px 5px rgb(50, 50, 30, 0.25);
 }
+
 .cue-var-controls {
   /* display: flex; */
   flex-flow: row wrap; /* shrinks otherwise */
   flex: 1 1 auto; /* ensures -main container with control actually expands */
   background: var(--faint-bg);
 }
+.cue-var-controls-mini-scroll {
+  overflow-y: scroll;
+  max-height: 4rem;
+}
+
 .cue-var-summary {
   display: flex;
   flex: 0 1 auto;
@@ -420,14 +289,14 @@ span[data-descr]:hover::after {
 }
 
 .cue-var-control { /* IDEAS: smooth resizing/drag-n-drop reordering of controls, and auto-flow */
-  /* so could have half-line sliders etc */
-  /* so how can we override and put several on same row for some? */
   display: flex;
   position: relative;
+  flex-wrap: wrap; /* so summary can extend to other lines... */
   flex: 1 1 auto; /* uh why is this working now? prob bc hard-specifying width on "those" */
-  /* width: 100%; /1* each control (or summary-line) on own line in flex container *1/ */
-  width: 75%; /* means a control of 25% width _before_ this control can fit, but if this is first on line this will expand further */
-  max-width: 500px;
+  min-width: 25%;
+  /* width: 75%; /1* means a control of 25% width _before_ this control can fit, but if this is first on line this will expand further *1/ */
+  /* width: 50%; /1* means a control of 25% width _before_ this control can fit, but if this is first on line this will expand further *1/ */
+  /* max-width: 400px; */
   /* something like 73% suddenly this (if slider) will compact and a 25% from after comes in */
   /* meaning for some reason padding/borders are treated differently when before and when after, investigate why */
   /* very hacky and presumably flaky currently */
@@ -437,10 +306,10 @@ span[data-descr]:hover::after {
   /* justify-content: flex-end; /1* works better than space-around if not filling entire space and text justified right? *1/ */
   align-items: center; /* vertical center */
   /* flex-flow: row wrap; *1/ /1* default */
-    padding: 1px 2px;
-    margin: 4px 5px;
-    background: rgba(50, 50, 50, 0.15);
-    text-align: right;
+  padding: 1px 2px;
+  margin: 4px 5px;
+  background: rgba(50, 50, 50, 0.15);
+  text-align: right;
 }
 
 .cue-var-control-main {
@@ -456,7 +325,8 @@ span[data-descr]:hover::after {
 }
 .auto-expand {
   /* max-width: 80%; */
-  width: 75%;
+  /* width: 75%; */
+  min-width: 75%; /* works better than equiv width for some reason (color picker doesnt overflow with this!?? why) */
   /* max-width: 375px; */ /* will have to cap width some way... */
   /* flex: 1 1 auto; /1* needed for most controls to auto expand. but fixed-width (xy, knob) mustnt ... *1/ */
 }
@@ -468,7 +338,7 @@ span[data-descr]:hover::after {
 }
 .cue-var-field {
   flex: 1 1 auto; /* expand these to max-width for even cols */
-  max-width: 30%; /* inc from 15 to avoid gap between text and control, but figure out a real solution instead! */
+  max-width: 25%; /* inc from 15 to avoid gap between text and control, but figure out a real solution instead! */
   /* or wait before had 15% name 70% control 15% val. then dropped val, put control at 75, so makes sense needs to be 25 to fill! */
   /* tho justify-content flex-end should also fix it ... */
 }
@@ -478,191 +348,24 @@ span[data-descr]:hover::after {
   /* max-width: 15%; /1* leads to some double rows on xy vals hmm *1/ */
   /* display: flex; */
 
-  margin: 4px 4px;
+  /* margin: 4px 4px; */  /* just this tiny margin makes eg color wrap control to next line... gah so sensitive */
     /* margin-top: 0px; */
     /* padding-right: 0px; */
     /* outline: 1px solid rgb(20, 20, 20, 0.05); */
     /* background: rgba(150, 150, 150, 0.05); */
 }
 
-.control-bg { /* common for controls' main surface/background */
-  background: linear-gradient(rgb(50, 56, 61, 0.85), rgb(33, 36, 40, 0.65));
-  box-shadow:
-  0px 0px 0px 1px rgb(30, 30, 30, 0.4)
-  ,
-        inset 0px 1px 4px 1px rgb(30, 30, 30, 0.15)
-        ;
-  /* border: 1px solid rgb(100, 70, 60, 0.6); /1* hmm breaks stuff *1/ */
-}
-.control-bg > div {
-  transition: 0.1s; /* smooth moves */
-}
-.control-xy-pointer {
-  position: relative;
-  background: #222;
-  /* background: rgb(190, 70, 70, 0.8); */
-  /* border: 1px solid rgb(120, 50, 40, 0.2); */
-  /* border: 4px solid #222; */
-  border: 3px solid rgb(150, 70, 70, 0.7);
-  border-radius: 10px;
-  /* border-radius: 1px; */
-  box-shadow: 0px 0px 3px 3px rgb(150, 70, 60, 0.75),
-        inset 0px 0px 2px 3px rgb(0, 0, 0, 0.2);
-  cursor: initial;
-  z-index: 2;
-}
-.control-xy-pointer-outer {
-  /* background: rgb(190, 70, 70, 0.8); */
-  /* border: 1px solid rgb(120, 50, 40, 0.2); */
-  /* width: 20px; */
-  /* height: 20px; */
-  /* z-index: 1; */
-}
-.control-xy {
-  cursor: crosshair;
-  /* border: 1px solid rgb(30, 30, 30, 0.3); */
-}
+/* @import './tolglow/cue-var-control.css'; */
 
-.control-slider {
-  flex: 1 1 auto;
-  /* width: 100%; */
-  /* min-width: 100px; */
-}
-.control-slider-fill {
-  background-image: linear-gradient(rgb(160, 75, 65, 0.8), rgb(180, 45, 40, 0.6));
-  /* --base: rgb(160, 75, 65, 0.8); */
-  /* background-image: linear-gradient(var(--base), calc(var(--base))); */
-  /* ^ want to set up auto gradients later on... */
-}
-.control-slider-thumb {
-  border-radius: 2px;
-  background: #222;
-  box-shadow: -7px 0px 13px 1px rgb(80, 40, 30, 0.4),
-               2px 0px  3px 0px rgb(45, 40, 35, 0.4), /* XXX if want a heavy one needs to adjust depending on x or y direction... */
-         inset 0px 0px  5px 2px rgb(10, 10, 10, 0.2);
-}
-
-
-div .control-knob-tick {
-  background: #222;
-  /* width: 8px; /1* maybe be careful about removing properties that make component entirely borked without css tho... *1/ */
-  border-radius: 8px;
-  /* border: 1px solid rgb(var(--faint-border)) */
-  /* border: 1px solid var(--faint-border) */
-  /* border: 1px solid rgb(60, 60, 60, 0.4); */
-  transform: scaleY(1.10);
-  box-shadow: -7px 0px 13px 1px rgb(80, 40, 30, 0.5),
-               -0px 2px  5px 2px rgb(50, 40, 30, 0.4),
-         inset 0px 0px  5px 2px rgb(10, 10, 10, 0.3);
-}
-.control-knob-limit {
-  background: rgb(60, 60, 60, 0.8);
-  width: 2px;
-}
-.limit-left {
-  box-shadow:  -2px 0px 7px 2px rgb(30, 40, 70, 0.4),
-               2px -2px  5px 1px rgb(40, 40, 35, 0.3);
-  /* box-shadow: 4px 0px 5px 3px rgb(50, 40, 30, 0.4), */
-  /*             2px 2px  5px 1px rgb(40, 40, 35, 0.3); */
-  /* box-shadow:  2px 0px 5px 3px rgb(50, 40, 30, 0.2), */
-  /*              2px -2px  5px 1px rgb(40, 40, 35, 0.4); */
-}
-.control-knob-limit.limit-right {
-  box-shadow: 2px 2px 5px 3px rgb(50, 40, 30, 0.2),
-              -2px -4px  6px 2px rgb(40, 40, 35, 0.4);
-}
-.control-knob-bull {
-  /* background: rgb(25, 25, 25, 0.95); */
-  background: rgb(30, 30, 30, 1.00);
-  z-index: 7;
-  border-radius: 100%;
-  box-shadow: 0px 0px 5px 5px rgb(30, 30, 30, 0.20);
-}
-
-.control-knob {
-  /* border-radius: 100%; */
-  overflow: hidden;
-  position: relative;
-  /* border: 1px solid rgb(30, 30, 30, 0.2); */ /* kills bg lol? must be some tight overflow */
-}
-
-svg.knob {
-  box-shadow: inset 0px 0px 5px 1px rgb(30, 30, 30, 0.15);
-}
-
-circle.knob-pie {
-  fill: transparent;
-  stroke: rgb(160, 75, 65, 0.6);
-}
-
-
-.hue-horizontal {
-    background: linear-gradient(to right, #dc6464bb 0%, #adab51 17%, #4dad4d 33%, #5cc2c2 50%, #5757bc 67%, #ae62bd 83%, #a25050 100%) !important;
-    filter: brightness(88%), desaturate(20%);
-    /* padding: 9px 2px; */
-    /* margin-top: 9px !important; */
-    /* margin-bottom: 3px !important; */
-}
-.slider-picker :last-child :first-child {
-  margin-top: 0px !important; /* only works with 0px, selects more firsts... */
-}
+/* @import './tolglow/native-inputs.css'; */
+/* @import './tolglow/mods.css'; */
 
 
 .macro-btns {
-    margin: 10px 10px;
-    overflow: hidden;
-    border: 1px solid var(--faint-border);
+  margin: 10px 10px;
+  overflow: hidden;
+  border: 1px solid var(--faint-border);
 }
-
-.slide-in-left-hidden {
-    position: relative;
-    z-index: 0;
-    left: -100%; /* slide out animation */
-    transition: 0.3s;
-    /* transition: opacity 0.4s; */
-    transition-delay: opacity 0.1s;
-}
-.slide-in-left-visible {
-    transition: 0.3s;
-    /* transition: opacity 0.4s; */
-    transition-delay: opacity 0.1s;
-    left: 5px;
-}
-
-.hidden {
-  visibility: hidden !important;
-  opacity: 0;
-  transition: visibility 0s 0.25s, opacity 0.25s ease-in;
-}
-.visible {
-  visibility: visible !important;
-  opacity: 1;
-  transition: opacity 0.25s ease-out;
-}
-.removed { display: none; }
-.restored { display: inherit; }
-
-.darkened {   filter: brightness(80%); }
-.brightened { filter: brightness(120%); }
-.left {   text-align: left; }
-.right {  text-align: right; }
-
-.flex-center {
-    display: flex;
-    align-items: center;
-}
-.slow-transition-child > div { transition: 0.7s; }
-.slow-transition-child > div > div { transition: 0.7s ease-in-out; }
-
-/* .centered-text { */
-/*     position: absolute; */
-/*     top: 50%; */
-/*     left: 50%; */
-/*     transform: translate(-50%, -50%); */
-/* } */
-/* .rc-popover-point, .rc-poover-tooltip { */
-/*   background-color: rgb(31, 31, 31, 0.6); */
-/* } */
 
 .nav-and-utils {
   display: flex;
@@ -670,15 +373,15 @@ circle.knob-pie {
   justify-content: space-around;
   /* background-color: #222324; */
   background: linear-gradient(#212224, rgb(50, 50, 50, 0.4));
-    flex-wrap: wrap;
+  flex-wrap: wrap;
 }
 
 .nav-btns {
-    margin: 2px 2px;
-    background-color: #282828;
-    border: 1px solid rgba(100, 100, 100, 0.4);
-    display: flex;
-    flex-wrap: wrap;
+  margin: 2px 2px;
+  background-color: #282828;
+  border: 1px solid rgba(100, 100, 100, 0.4);
+  display: flex;
+  flex-wrap: wrap;
   flex: 0 1 auto;
   max-width: 100px; /* for lack of better know-how */
   /* height: 50px; */
@@ -687,10 +390,10 @@ circle.knob-pie {
 .nav-btn {
   min-width: 33%;
   flex: 0 1 auto;
-    border: 1px solid rgba(100, 100, 100, 0.2);
-    border-radius: 6px;
-    font-size: 12px;
-    opacity: 0.8;
+  border: 1px solid rgba(100, 100, 100, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 .sync-sources {
@@ -701,7 +404,6 @@ circle.knob-pie {
   font-size: 12px;
 }
 
-
 .row-button { /*cant reach these by css...*/
     transition: opacity 270ms;
     color: #dcb;
@@ -709,33 +411,108 @@ circle.knob-pie {
     box-shadow: 8px 6px 10px 5px rgb(50, 50, 30, 0.25);
 }
 
-.input-dark {
-    background: rgba(30, 30, 30, .65) !important;
-    color: #dcb !important;
-    opacity: 0.9;
-    z-index: 5;
+
+
+#modal-container {
+  top: 0px; left: 0px;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+}
+
+#modal {
+  box-shadow: 2px 2px 7px 4px rgb(30, 30, 30, 0.35);
+  background-color: #2a2829;
+
+  opacity: 0; /* id prefer not actually rendering it unless needed tho... */
+  pointer-events: none;
+  transform: scale(1.5);
+}
+.modal-is-open#page {
+  /* filter: blur(1px) grayscale(50%) brightness(40%); */
+  filter: blur(1px) grayscale(50%); /* brightness acts a bit weird...doesnt cover everything? */
+  transform: scale(0.99);
+}
+.modal-is-open#modal {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+#page, #modal {
+ transition: all 0.4s ease;
+}
+
+.log-container {
+  background: #222;
+  display: flex;
+  /* align-items: center; */
+  justify-content: left;
+  justify-items: left;
+}
+.log {
+  text-align: left;
+  font-size: 0.8rem;
+}
+.log-inner {
+ max-height: 20em;
+ overflow-x: scroll;
+ width: 100%;
+ /* padding: 0.5em 0em; */
+ transition: all 0.3s;
+}
+.log-message {
+  white-space: nowrap;
+  line-height: 1rem;
+  /* border: 0.5px solid rgb(90, 90, 90, 0.5); */
+  border: 0.5px solid rgb(0, 0, 0, 0.3);
+  padding: 0em 0.5em;
+  /* background: var(--log-message-bg); */
+}
+.log-message > td {
+  padding: 0em 0.2em 0em 1.2em;
+}
+.message td {
+  white-space: wrap;
+}
+
+.hud {
+  position: fixed;
+  z-index: 100;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  font-size: 1.6rem;
+}
+.hud-message {
+  margin: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgb(150, 150, 150, 0.3);
+  opacity: 0.8;
+  /* position: relative; */
+}
+
+.message.error   { color: var(--message-error); }
+.message.warning { color: var(--message-warning); }
+/* .message.info    { color: var(--message-info); color: #222; } */
+
+.hud-message.error   { background: #f55; }
+.hud-message.warning { background: #fa5; }
+.hud-message.info    { background: #dcd; color: #222; }
+
+.hud-modal-main {
+  padding: 0.5rem 2rem;
+}
+.hud-modal-main > * {
+  padding: 0.5rem;
 }
 
 
-
-.chosen-container-single > div {
-    background: rgba(30, 30, 30, .65);
-    color: #dcb;
-}
-.chosen-container-single .chosen-single {
-    background: rgba(30, 30, 30, .65);
-    color: #dcb;
-}
-.chosen-container-multi .chosen-choices {
-    background: rgba(30, 30, 30, .65);
-    color: #dcb;
-}
-.chosen-container .chosen-drop {
-    background: rgba(30, 30, 30, .65);
-    color: #dcb;
-}
-.chosen-container-active {
-    background: rgba(30, 30, 30, .65);
+.zmdi {
+  display: flex; /* some weird sizing behavior with default inline-block */
 }
 code {
     background: rgba(30, 30, 30, .3) !important;
@@ -750,9 +527,36 @@ code {
 }
 .header-bar {
     background: rgba(0, 0, 0, .2) !important;
-    /* font-size: 12px; */
     text-align: left;
     border: 3px solid #222;
 }
 
 .progress-bar { color: #567; background-color: #222; }
+
+
+
+.input-dark { /* Stuff for rc dropdown I think? fix and replace, obviously. */
+    background: rgba(30, 30, 30, .65) !important;
+    color: #dcb !important;
+    opacity: 0.9;
+    z-index: 5;
+}
+.chosen-container-single > div {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container-single.chosen-single {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container-multi.chosen-choices {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container.chosen-drop {
+    background: rgba(30, 30, 30, .65);
+    color: #dcb;
+}
+.chosen-container-active {
+    background: rgba(30, 30, 30, .65);
+}

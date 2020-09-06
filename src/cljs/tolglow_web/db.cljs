@@ -32,26 +32,6 @@
  [path]
  (rf/dispatch [:toggle path]))
 
-;; (rf/reg-sub :get (fn [db [_ & [path]]] (get-in db (if (seqable? path) path [path]))))
-(rf/reg-sub :get
- (fn [db [_ & path]]
-  (get-in db (if (seqable? path) path [path]))))
-(rf/reg-event-db :set
- (fn [db [_ path value]]
-  (assoc-in db path value)))
-(rf/reg-event-db :unset
- (fn [db [_ path]]
-  (update-in db (butlast path) #(dissoc % (last path)))))
-(rf/reg-event-db :toggle
- (fn [db [_ path]]
-  (update-in db path #(not %))))
-(rf/reg-event-db :conj
- (fn [db [_ path value]]
-  (update-in db path #(conj % value))))
-(rf/reg-event-db :pop
- (fn [db [_ path]]
-  (update-in db path pop)))
-
 
 (def user-key "tolglow-web-dev-storage")  ;; localstore key
 
@@ -106,15 +86,39 @@
   {:id :113  :color "#789" :text "6nd ROW" :position [6 5] :fx "YO"} ]
  :filter {:method "regex"}
  :view {:page [0 0] :offset [0 0] :size 8}
+ :commands {:start {:cmd "(afterglow.show/start!)"}
+            :stop {:cmd "(afterglow.show/stop!)"}
+
+            :cue-start {:cmd "afterglow.show/run-effect-from-cue-grid! " :args [:x :y]} ;ehhh or yeah just use schema
+            }
+ :schema {:query
+          {:fixtures {:query "{ fixtures { name id key x y z } }"
+                      :event [:tolglow-web.events/save-fixtures]}
+           :shaders {:query "query GetShader($path: String) {
+                               shaders(path: $path) {
+                                 file_name kind text
+                             } }"
+                     :args {:path "resources/public/glsl"}
+                     :event [:save-shaders]}}
+          :subscription
+          {:fixture-state {:query "{ fixture_state { id color dimmer strobe pan_tilt lookat } }"
+                           :event [:save-fixture-state]}
+           :fixture-diff  {:query "{ fixture_diff { id newdata_string } }" ;or something... prob abandon gql for this tbh
+                           :event [:save-fixture-diff]}
+           :live-shaders {:query "{ live_shader { file_name text kind }}"
+                          :event [:save-shaders]}}}
  :options {:auto-save-vars true
-           :display {:control {:knob {:size 100}
-                               :beats {:size 50}
-                               :cycles {:size 50}
+           :hud {:timeout 30 :level :info}
+           :display {:control {:knob    {:size 50}
+                               :beats   {:size 75}
+                               :cycles  {:size 75}
                                ; :gain {:size "50%"} ;maybe not now but will def work
-                               :gain {:size 200}
-                               :offset {:size 200}
-                               :xy {:size 100}
-                               :alpha {:size 25}}} ;presumably a size here would= "dont fill all available" & can fit multiple same line...
+                               :gain    {:size 100}
+                               :offset  {:size 100}
+                               :xy      {:size 100}
+                               ; :alpha {:size 25}}} ;presumably a size here would= "dont fill all available" & can fit multiple same line...
+                               :alpha   {:size 50}
+                               :boolean {:size 30}}} ;presumably a size here would= "dont fill all available" & can fit multiple same line...
            }
  :sync {:selected-id nil
         :sources #_[]

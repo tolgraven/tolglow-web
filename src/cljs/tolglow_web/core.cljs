@@ -1,52 +1,53 @@
 (ns tolglow-web.core
   (:require [reagent.core :as r]
             [re-frame.core :as rf]
-            [re-com.core :as rc :refer-macros [handler-fn]]
-            [recalcitrant.core :refer [error-boundary]]
+            [re-graph.core :as rg]
             [goog.events :as events]
-            [clojure.pprint :as pprint]
-            [clojure.string :as string]
-            [thi.ng.color.core :as clr]
-            [thi.ng.math.core :as cmath]
             [mount.core :as mount :refer [defstate]]
+            [clojure.core.async :refer [pub sub chan go go-loop >! <! timeout close! unsub unsub-all sliding-buffer]]
             ; [reitit.core :as reitit]
-            [tolglow-web.db :as db]
-            [tolglow-web.util :as util :refer [css-str css-arg cmod make-key cs <sub]]
-            [tolglow-web.events :as tevents]
             [tolglow-web.subs]
-            [tolglow-web.views :as views :refer [cue-page active-effects nav-btns sync-sources header-bar]] ;need?
+            [tolglow-web.events :as tevents]
+            [tolglow-web.util :as util]
+            [tolglow-web.views :as views]
             [tolglow-web.quil]))
 
 (defn dev-setup []
-  (enable-console-print!)) ;what else?
-
-(defn safe "Wrap whatever with an error boundary"
- [elem]
- (r/as-element [(fn [] [error-boundary elem])]))
+ (enable-console-print!)
+ (println "LOAD")
+ ;for advanced compilation, instead of preload can do:
+ #_(do (require 'devtools.core :as devtools)
+     (devtools/install!)))
 
 
 (defn load-page "Completely load or reload page" []
-  (dev-setup) ;once is enough
-  (println "LOAD") ;always
-  (rf/dispatch-sync [:initialize]) ;on full reload
-  (tevents/ql-init true) ;init re-graph. full
-  (rf/dispatch [:init-page (util/on-key-init)]))
+ ; (when ^boolean goog/DEBUG
+ ;  (dev-setup)) ;once is enough
+ (defonce _init_ (do
+                  (dev-setup)
+                  (rf/dispatch-sync [:initialize]))) ;on full reload
+ (rf/dispatch [:init
 
-(defn soft-reset "Reload after exception" []
-  (println "RELOAD SUBSCRIPTION CACHE!")
-  (rf/clear-subscription-cache!) ;after react exception. so a third, nedium reload?? trigger how, by rf event request?
- )
-; (defstate ^{:on-reload :noop} init-js
-(defstate init-js
- :start load-page)
+               [[:diag/new :debug "Initialize" "Complete init"]
+                [:init-re-graph "nu.local" #_3449 3001] ;tho hmm no reason to do this each reload...
+                [:init-keyboard]
+                [:set [:ch :fixtures] (chan (sliding-buffer 100))]
+                [:set [:ch :shaders]  (chan (sliding-buffer 4))]
+                [:send-fetch-events]]
+
+               [[:diag/new :debug "Initialize" "JS loaded"]
+                #_[:send-fetch-events] ;temp, for shaders...
+                #_[:clear-rf-cache]] ])) ;lets see if slightly less errors? nope, many more? issue is then clears each time ugh
+
 
 (defn ^:export init []
- (mount/start #'init-js))
+ (when-some [el (js/document.getElementById "cue-db")]
+  ; (defonce _init_ (load-page))
+  ; (rf/clear-subscription-cache!) ;trytry
+  (load-page)
+  (r/render [views/ui] el)))
 
-
-(when-some [el (js/document.getElementById "cue-db")]
-  (defonce _init_ (load-page))
-  (r/render [views/ui] el))
+(init)
 
 ;EX
 ; (defn nav-link [uri title page]

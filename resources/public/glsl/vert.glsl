@@ -2,6 +2,7 @@ varying vec3 vNormal, vNormalPos, vActualNormal;
 varying vec2 vUv;
 varying vec4 vProjCoord, vModelM;
 uniform vec3 viewVector;
+uniform float time;
 const mat4 biasMatrix = mat4(0.5, 0.0, 0.0, 0.0,
                              0.0, 0.5, 0.0, 0.0,
                              0.0, 0.0, 0.5, 0.0,
@@ -17,7 +18,7 @@ void main() {
   /* vNormalPos   = normalize(cameraPosition - vec3(modelMatrix * vec4(position, 1.0))); */
 
   vModelM	     = modelMatrix * vec4(position, 1.0);
-  /* vec3 crunk  = vec3(sin(position.x), position.y, position.z); */
+  /* vec3 crunk  = vec3(position.x, sin(time) * 0.2 +position.y, position.z); */
   /* gl_Position	 = projectionMatrix * modelViewMatrix * vec4(crunk, 1.0); */
   gl_Position	 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   vProjCoord   = biasMatrix * gl_Position;

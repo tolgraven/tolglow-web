@@ -121,6 +121,9 @@
 (def texture (.load (three/TextureLoader.)  "3d-models/graynoise.png"
 ; (def texture (.load (three/TextureLoader.)  "3d-models/perlin.png"
                     (fn [tex]
+                     (doto tex
+                      (j/assoc! :wrapS three/RepeatWrapping
+                                :wrapT three/mirroredRepeatWrapping))
                      (swap! globals assoc :fog-texture tex))))
 
 (defn volu-spot-material [& {:keys [camera d-target]}] ;or just fragment-shader etc (dont make new obj)
@@ -148,8 +151,8 @@
          {:uniforms        uniforms
           :vertexShader    vertex-shader
           :fragmentShader  fragment-shader
-          :side		          three/DoubleSide
-          :blending	       three/AdditiveBlending ;auto get rid of black. but hmm...
+          ; :side		          three/DoubleSide
+          ; :blending	       three/AdditiveBlending ;auto get rid of black. but hmm...
           :transparent     true
           :depthWrite      false}))] ;this should ensure were not incl in depth texture right??
   material))

@@ -6,6 +6,7 @@
    [thi.ng.color.core :as clr]
    [clojure.edn :as edn]
    [afterglow.rhythm :refer [metro-snapshot]]
+   [afterglow.web.routes.web-repl :as web-repl]
    [afterglow
     [core :as core] [controllers :as ct]
     [midi :as midi :refer [sync-to-midi-clock]]
@@ -24,6 +25,7 @@
 (defstate ^{:on-reload :noop} tolshow
   :start (tcore/activate-show))
 ; (mount.core/start #'tolshow)
+; (show/find-cue-grid-active-effect *show* 8 8)
 
 (def current-cue-color #'aweb/current-cue-color)
 (defn cue-view "Returns a nested structure of rows of cue information starting at the specified origin, with the specified width and height. Ideal for looping over and rendering in textual form, such as in a HTML table.  Each cell contains a tuple [cue effect], the cue assigned to that grid location, and the currently-running effect, if any, launched from that cue. Cells which do not have associated cues still be assigned a unique cue ID (identifying page-relative coordinates, with zero at the lower left) so they can be updated if a cue is created for that slot while the page is still up."
@@ -33,28 +35,41 @@
         snapshot (metro-snapshot (:metronome *show*))]
     (for [y (range (dec (+ bottom height)) (dec bottom) -1)
           x (range left (+ left width))]
-      (assoc
-         (if-let [[cue active] (show/find-cue-grid-active-effect show x y)]
-           (let [held? (and holding (= holding [x y (:id active)]))
-                 color (current-cue-color show active-keys cue active held? snapshot)]
-             (assoc cue
-                    :current_color color
-                    :style_color (str "style=\"background-color: "
-                                      @(-> color clr/as-int24 clr/as-css)
-                                      "; color: " (util/contrasting-text-color color) "\"")
-                    :position [x y]))
-           {}) ;; No actual cue found, start with an empty map
-         :id (str "cue-" x "-" y)))))  ;; Add the ID whether or not there is a cue
+      (if-let [[cue active] (show/find-cue-grid-active-effect show x y)]
+        (let [held? (and holding (= holding [x y (:id active)]))
+              color (current-cue-color show active-keys cue active held? snapshot)]
+          (assoc cue
+                 :current_color color
+                 ; :style_color (str "style=\"background-color: "
+                 ;                   @(-> color clr/as-int24 clr/as-css)
+                 ;                   "; color: " (util/contrasting-text-color color) "\"")
+                 :position [x y]))))))  ;; Add the ID whether or not there is a cue
+      ; (assoc
+      ;    (if-let [[cue active] (show/find-cue-grid-active-effect show x y)]
+      ;      (let [held? (and holding (= holding [x y (:id active)]))
+      ;            color (current-cue-color show active-keys cue active held? snapshot)]
+      ;        (assoc cue
+      ;               :current_color color
+      ;               :style_color (str "style=\"background-color: "
+      ;                                 @(-> color clr/as-int24 clr/as-css)
+      ;                                 "; color: " (util/contrasting-text-color color) "\"")
+      ;               :position [x y]))
+      ;      {}) ;; No actual cue found, start with an empty map
+      ;    :id (str "cue-" x "-" y)))))  ;; Add the ID whether or not there is a cue
 
 (def cue-var-values #'aweb/cue-var-values)
 (def effect-summary #'aweb/effect-summary)
+; (defn add-hook [] (show/add-frame-fn! (fn previous-movement [snapshot] )))
+; (defn previous-movement   []  (:previous @(:movement *show*)))
+(defn calculated-values   [] @(:calculated-values *show*))
+; (defn visualizer-visible  []  (:visualizer-visible @(:dimensions *show*) []))
+;should drop :head recursion when sending...
 
 ;this sucks balls and will need alt solution sooner not later.
-;ugh
-(cue-var-values *show* (effect-summary @(:active-effects *show*)))
+; (cue-var-values *show* (effect-summary @(:active-effects *show*)))
 
-; #thi.ng.color.core.HSLA{:h 0.5, :s 0.5, :l 0.5, :a 1.0}
 
+; (get @(:cues (:cue-grid *show*)) [8 8])
 ; (print-dup (clr/hsla 0.5 0.5 0.5) java.io.)
 ; (def as-str (binding [*print-dup* true] (prn (clr/hsla 0.5 0.5 0.5))))
 ; (type as-str)

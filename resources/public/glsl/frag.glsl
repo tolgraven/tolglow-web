@@ -181,32 +181,39 @@ vec4 fog() {
   /*                                      0.90 * vUv.y - 0.09 * cos(time) */
 
   /* vec2 uv = vUv; */
-  vec2 uv = vec2(vProjCoord.x * 0.2, vProjCoord.y * 0.15);
-  vec3 fft = texture2D(tFogNoise, vec2(0.08 * uv.x + 0.11 * sin(time),
-                                       0.10 * uv.y - 0.09 * cos(time)
-                                                    + 0.03 * tan(fract(time/3.2)))).rgb;
+  /* vec2 uv = vec2(vProjCoord.x * 0.2, vProjCoord.y * 0.15); */
+  vec2 uv = vec2(vUv.x*0.2 + vProjCoord.x * 0.13,
+                 vUv.y*0.2 - vProjCoord.y * 0.02);
+  vec3 fft = texture2D(tFogNoise, vec2(0.08 * uv.x + 0.04 * sin(time),
+                                       0.18 * uv.y - 0.03 * cos(time)
+                                                   + 0.02 * tan(fract(time/3.2)))).rgb;
   uv = vUv;
-  vec3 fft2 = texture2D(tFogNoise, vec2(0.06 * uv.x - 0.04 * sin(time),
-                                        0.08 * uv.y + 0.07 * cos(time)
-                                                    - 0.03 * fract(time/2.2))).rgb;
+  vec3 fft2 = texture2D(tFogNoise, vec2(0.16 * uv.x - 0.03 * sin(time),
+                                        0.1 + sin(0.3*time+0.1) * 0.09 * uv.y + 0.03 * cos(time)
+                                                    - 0.02 * fract(time/2.2))).rgb;
   fft += fft2;
-  vec3 wav = texture2DProj(tFogNoise, vProjCoord).rgb;
-	float t  = cos(fft.x * 2.0 / 3.14159265);
-	float ct = cos(t);
-	float st = sin(t);
+  /* vec3 wav = texture2DProj(tFogNoise, vProjCoord).rgb; */
+  vec3 wav = texture2DProj(tFogNoise, uv.xyxy).rgb;
+	/* float t  = cos(fft.x * 20.0 / 3.14159265); */
+	float t  = cos(fft.x * 2.2 / 3.14159265);
+	float cost = cos(t);
+	float sint = sin(t);
 
 	/* vec2 uv = vUv; */
 	vec2 vc = (2.0 * uv - 1.0) * vec2(uv.x / uv.y, 1.0);
 	/* vec2 uv = fragCoord.xy / iResolution.xy; */
 	/* vec2 vc = (2. * uv - 1.) * vec2(iResolution.x / iResolution.y, 1.); */
 
-	vc = vec2(vc.x * ct - vc.y * st
-          , vc.y * ct + vc.x * st);
+	vc = vec2(vc.x * cost - vc.y * sint,
+            vc.y * cost + vc.x * sint);
 
-	vec3 rd = normalize(vec3(0.5, vc.x, vc.y));
-	vec3 c = 2.0 * vec3(fbm(rd, fft, wav)) * fft.xyz;
-	c += hash(hash(uv.xyy) * uv.xyx * time) * 0.2;;
-	c *= 0.9 * smoothstep(length(uv * 0.3 - .15), 0.7, 0.4);
+	vec3 rd = normalize(vec3(0.1, vc.y, vc.x));
+	/* vec3 rd = normalize(vec3(uv.y, vc.y, vc.x)); */
+  float contrast = 1.8;
+	vec3 c = contrast * vec3(fbm(rd, fft, wav)) * fft.xyz;
+	c += hash(hash(uv.xyy) * uv.xyx * time) * 0.1;
+	/* c += hash(hash(uv.xyx) * uv.xyy * time) * 0.1; */
+	c *= 0.7 * smoothstep(length(uv * 0.24 - 0.12), 0.60, 0.9);
 
 	return vec4(c, 1.0);
 }
@@ -231,7 +238,7 @@ void main() { // wishlist: fix angle thing, moving fog noise texture,
     float angleIntensity = angleIntensity2;
     /* float angleIntensity = mix(angleIntensity2, angleIntensity2, angleIntensity3); */
 
-    float radius      = 5.515;
+    float radius      = 5.115;
     float ourDepth    = toLinearDepth(gl_FragCoord.z);
     float bufferDepth = toLinearDepth(texture2DProj(tDepth, vProjCoord).x); //correct
     /* float diff        = clamp(abs(ourDepth - bufferDepth) / radius, 0.0, 1.0); // 'how close to anything solid?' */
@@ -240,24 +247,24 @@ void main() { // wishlist: fix angle thing, moving fog noise texture,
     float fadeNearNear  = clamp(ourDepth / 3.0, 0.0, 1.0);     // avoid clipping cone when flying through. not sure if worth?
     intensity	         *= dimmer * fadeNearNear * diff * opacity * angleIntensity;
     /* float s = abs(sin(time)); */
-    float ft = fract(time / 2.0);
-    float s = (sin(time));
+    float ft = fract(time / 2.2);
+    float s = 1.2 * (sin(time*0.4));
     float sf = cos(ft);
 
-    vec4 noiseA = texture2D(tFogNoise, vec2(vUv.x - 0.1 * s,
-                                            vUv.y + 0.2 * sf));
+    vec4 noiseA = texture2D(tFogNoise, vec2(2.5*vUv.x - 0.3 * s + 0.25 * sf,
+                                            3.9*vUv.y + 0.2 * sf));
     /* vec2 uv = vec2(0.2 * vUv.x - 0.1 * s, 0.2 * vUv.y); */
-    vec2 uv = vec2(0.15 * vUv.x - 0.1 * tan(s), 0.3 * vUv.y);
-    vec3 noiseB = texture2D(tFogNoise, uv).rgb;
+    vec2 uv = vec2(0.05 * vUv.x - 0.1 * tan(s), 0.1 * vUv.y);
+    vec3 noiseB = texture2D(tFogNoise, vec2(uv.x, 1.0 - uv.y)).rgb;
 
     vec3 fog = fog().rgb;
     vec3 color = lightColor + 0.090*vec3(noiseB.rgb)
-                            - 0.5 * vec3(noiseA.rg*0.015, noiseB.b*0.06)
+                            - 0.220*vec3(noiseA.rg*0.115, noiseB.b*0.23)
     /* vec3 color = lightColor + 0.010*vec3(noiseB.rg, noiseA.b) */
     /*                         - vec3(noiseA.rg*0.015, noiseB.b*0.06) */
-                            - fog*0.52;
+                            - fog*0.25 * (0.3+clamp(abs(0.8 * sin(ft)), 0.2, 0.6));
 
-    gl_FragColor	     = vec4(color, intensity - 0.015*noiseB);                         // set the final color
+    gl_FragColor	     = vec4(color, intensity - 0.022*noiseB);                         // set the final color
     /* gl_FragColor	     = vec4(lightColor, intensity);                         // set the final color */
     /* gl_FragColor	     = vec4(fog, intensity + 0.02*noise);                         // set the final color */
     /* gl_FragColor	     = vec4(vec3(diff), 0.8);                         // set the final color */

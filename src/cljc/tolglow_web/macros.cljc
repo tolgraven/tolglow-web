@@ -33,15 +33,19 @@
           g
           (last steps)))))
 
-(defmacro as-> "Binds name to expr, evaluates the first form in the lexical context
-  of that binding, then binds name to that result, repeating for each
-  successive form, returning the result of the last form."
-  [expr name & forms]
-  `(let [~name ~expr
-         ~@(interleave (repeat name)
-                       (butlast forms))]
-     ~(if (empty? forms)
-        name
-        (last forms))))
+; (defmacro as-> "Binds name to expr, evaluates the first form in the lexical context
+;   of that binding, then binds name to that result, repeating for each
+;   successive form, returning the result of the last form."
+;   [expr name & forms]
+;   `(let [~name ~expr
+;          ~@(interleave (repeat name)
+;                        (butlast forms))]
+;      ~(if (empty? forms)
+;         name
+;         (last forms))))
 
-()
+
+(defmacro to-wrapper [name docstr f]
+ `(defn ~name ~docstr [model-path#]
+   (quick-wrapper ~f model-path#)))
+

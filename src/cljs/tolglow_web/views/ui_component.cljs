@@ -11,46 +11,85 @@
            [tolglow-web.util :as util :refer [at css-str css-arg cmod make-key cs <sub]]
            [tolglow-web.db :as db]
 
-            [cljsjs.react]
-            [cljsjs.react-color]
-            [cljsjs.react-flip-move]))
+           [cljsjs.react]
+           [cljsjs.react-color]
+           [cljsjs.react-flip-move])
+ (:require-macros
+           [tolglow-web.macros :as macros]))
 
 ;should have a common format for all components.
 ;first arg a map like can be passed to regular [:div] etc
-;makes sense to me. Can we copy their way of avoiding it mandatory?
 ;Also should generally be able to pass a single path acting as Model
 ;for component - where val is fetched, and changes dispatched to.
 ;But also overridable when divergance or fancier behavior required.
 ;some kinda deep-merge anyways
-;
+
 (defn toggle "A nice little (but not native checkbox little) toggle"
- [attrs model on-change]
- (let []
-  [:div.toggle.checkbox
-   { :style {:margin "5px 5px"
-             :width 25 :height 22
-             :background "#444"
-             :position :relative
-             :z-index 5
-             :border "2px solid #333"
-             :border-radius 8}
-    ; :on-click (fn [v] (on-change (boolean v)))}
-    ; :on-click (fn [v] (on-change (not @model)))}
-    :on-click #(do (print @model)
-                   (on-change (if-not (seq? @model) (not @model))))} ;try to force bool
-   [:div "o"]
-   [:div.slide-in-left-hidden.hidden ;checkbox-inner-hidden
-    {:class (if @model "slide-in-left-visible visible" #_"checkbox-inner-visible")
-     :style {:background "#46b"
-             :width "80%" :height "74%"
-             :border-radius 5
-             :position :absolute
-             :z-index 0
-             :top "13%" #_:left #_"10%"}}]]))
+ ([model-path]
+  ; (let [on-change #(db/toggle model-path)
+  ; (let [on-change #(rf/dispatch (into [:set] model-path))
+  (let [on-change #(rf/dispatch [:set model-path %])
+        model (rf/subscribe (into [:get] model-path))]
+  [toggle {} model on-change]))
+ ([model on-change]
+  (toggle {} model on-change))
+ ([attrs model on-change] ;this is double triggering...
+  (let []
+   [:label.toggle-switch
+    (util/deep-merge
+     {:style {:margin "2px 2px"
+              :width  "1.5rem"
+              :height "1.3rem"
+              :z-index 2} }
+      ; :on-click #(on-change (not @model))} ;wrong place!
+     attrs)
+    [:input {:type :checkbox :default-checked @model
+             :on-click (fn [e] ;ok, only triggers once now
+                 ; (.preventDefault e) ;broke it! :O what
+                 (on-change (not @model)))}]
+    [:span.toggle-slider.round]
+    #_"label"])))
+;then build radio version as well for some settings...
 
-(defn button [attrs model on-change]
- )
+(defn button [attrs model on-change])
 
+
+(defn quick-wrapper
+ [f model-path & [attrs]]
+ (let [on-change #(db/toggle model-path)
+       model (rf/subscribe (into [:get] model-path))]
+  [f {} model on-change]))
+
+
+(defn material-toggle
+ [model-path [on-state off-state & [prefix]]]
+ (let [model (rf/subscribe (into [:get] model-path))]
+  [:i.zmdi
+   {:class (str "zmdi-"
+                (when prefix (str prefix "-"))
+                (if @model on-state off-state))
+    :style {:margin "0.1em 0.2em"}
+    ; :style {:margin "0.2em 0.4em"}
+    :on-click #(db/toggle model-path)}]))
+
+(defn minimize [model-path]
+ [material-toggle
+  (into model-path [:minimized])
+  ["maximize" "minimize" "window"]])
+
+(defn close [on-click]
+ [:i.zmdi.zmdi-close
+  {:style {:position :absolute
+           ;:right "0.4rem" :top "0.2rem"
+           :right -5 :top -5
+           :background "rgb(30, 30, 30, 0.7)"
+           :color "#edc"
+           :border-radius "50%"
+           :padding "0.1em"
+           :font-size "1.0rem"
+           ; :line-height "1em"
+           }
+   :on-click on-click}])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
@@ -63,18 +102,21 @@
 ; ; if keep handlers outside to avoid recreating, id etc gets captured and not updated within. so no go...
 (defn drag-handlers "Create on-drag-* handlers for grid-housed component. `path` is the base event path events will be dispatched and subscribed (XXX curr using :get ie. pure db path). TODO: Touch stuff..."
  [path {:keys [position id] :as obj}]
- (let [at-path (fn [& args] (into path args))
-       dispatcher (fn [& args] #(rf/dispatch-sync (into path args)))]
-  {:on-drag-start (dispatcher :start id)
-   :on-drag-end   (dispatcher :end)
-   :on-drag-enter (dispatcher :over position) ;-enter is like -over but fires only once!
-   :on-drag-over   (fn [e]
-                    (.preventDefault e) ;not sure why but it's said it's mandatory
-                    (if (not= (db/get (at-path :over)) position) ;prevent event spam...
-                     (rf/dispatch-sync (at-path :over position)))) ;sync or it'll send 100 events before we have the chance to catch up...
+ (let [at-path     (fn [& args] (into path args))
+       dispatcher  (fn [& args] #(rf/dispatch (into path args)))]
+  {:on-drag-start  (dispatcher :start id)
+   :on-drag-end    (dispatcher :end)
+   :on-drag-enter  (dispatcher :over position) ;-enter is like -over but fires only once! and doesnt actually work for finishing off... lol
+   :on-drag-over   (fn [e] (.preventDefault e) ;prevent "Reset the current drag operation to "none"."
+                    ;guess still need below as -leave is sluggish (arrives after incoming -enter)
+                    (when (not= position (db/get (at-path :over))) ;prevent event spam...
+                     (rf/dispatch (at-path :over position)))) ;sync or it'll send 100 events before we have the chance to catch up...
    :on-drag-leave  (dispatcher :over nil)
-   :on-drop        (dispatcher :over position) ;-leave can be rather overzealous, ensure valid :over
-   ; :on-touch-start (dispatcher :start id) ;would need a timer to check length of touch in case just tapping yeah?
+   :on-drop        (fn [e] (.preventDefault e) ;prevent "open as link for some elements"
+                    (rf/dispatch (at-path :over position))) ;-leave can be rather overzealous, ensure valid :over
+   ; ^ so over-sensitive with touch. how best throttle?
+   :on-touch-start (fn [e]
+                    (dispatcher :start id)) ;would need a timer to check length of touch in case just tapping yeah?
    ; :on-touch-move  (dispatcher :end)
    ; :on-touch-end   (dispatcher :end)
    :draggable      (if id true)})) ;all are valid drop targets, but empties cant be dragged...
@@ -92,12 +134,11 @@
      (reset! external-model latest-ext-model)
      (reset! internal-model latest-ext-model))
     [:input.form-control
-     (merge attr ; (merge args ;would seem smart but react gets pissed off :/
-            {:class class, :type "search" ;for clear button ;"text"
-             :style       (merge style
-                                 {:display "inline-flex" :flex "1 1 auto"
-                                  :width (or width 100)
-                                  :height height})
+     (merge {:class class, :type "search" ;for clear button ;"text"
+             :style (merge {:display "inline-flex" :flex "1 1 auto"
+                            :width (or width 100) ; how do like "min-width 'chars in str model + 10' up til 200 pixels yada?"
+                            :height height}       ; user best wrap in div or pass class for more fine grained control either way
+                           style)
              :placeholder placeholder
              :value       @internal-model
              :disabled    disabled?
@@ -123,7 +164,8 @@
                                      (on-enter @internal-model)))
                            "Escape" (if change-on-blur?
                                      (reset! internal-model @external-model)) ;already loses focus automatically when press esc
-                           true)))})]))))
+                           true)))}
+            attr)])))) ;after not before, want to be able to override stuff duh
 
 
 
@@ -193,10 +235,7 @@
 ;;  (when-let [content [:pre [:code cue]]]
 ;;   [codehl-component content]))))]
 
-
 (def flip-move (r/adapt-react-class js/FlipMove))
-;; (def slider (r/adapt-react-class js/ReactSlider))
-;; ^ this one has ranged/minmax stuff so def go for that. just figure out how...
 
 (def slider-color-picker (r/adapt-react-class js/ReactColor.SliderPicker))
 (def alpha-picker (r/adapt-react-class js/ReactColor.AlphaPicker))
@@ -211,4 +250,4 @@
 (def sketch-picker (r/adapt-react-class js/ReactColor.SketchPicker))
 (def swatches-picker (r/adapt-react-class js/ReactColor.SwatchesPicker))
 (def twitter-picker (r/adapt-react-class js/ReactColor.TwitterPicker))
-(def custom-picker (r/adapt-react-class js/ReactColor.CustomPicker))
+; (def custom-picker (r/adapt-react-class js/ReactColor.CustomPicker))

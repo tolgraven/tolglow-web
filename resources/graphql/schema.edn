@@ -1,124 +1,166 @@
 {:enums
  {:cue_var_type
   {:description "Types of cue-var"
-   ; :values [:NUMBER :COLOR :XY]}}
-   ; :values [:DOUBLE :COLOR :INTEGER :BOOL]}}
-   :values [:double :color :integer :boolean]}}
- ;UNIT as a field duh. %, unity, meters, degrees...
+   :values [:double :color :integer :boolean]}
 
- ; :interfaces
- ; {:ranged {:fields {:min {}
- ;                    :max {}}}
- ;  :categorized {:fields {:id {}
- ;                         :name {}
- ;                         :type {}}}}
+  :search_result_active
+  {:values [:Cue :Variable]}} ;or just union will handle the limiting hmm
 
-; (def scalars
-;   (schema/compile
-;     {:scalars
-;      {:GridPosition
-;       {:parse #(try (apply vector (clojure.string/split % #" "))
-;                    (catch Throwable _ nil))
-;       ; {:parse #(when (string? %)
-;       ;            (try (apply vector (clojure.string/split % #" "))
-;       ;              (catch Throwable _ nil)))
-;        :serialize #(try (str %) #_(str (first %) " " (second %))
-;                      (catch Throwable _ nil))}}
-;      :queries
-;      {:pos
-;       {:type :GridPosition
-;        :args {:id {:type :Int}}
-;        :resolve (fn [ctx args v] [0 7])} }}))
-; (lacinia/execute scalars "{pos(id: 1) }" nil nil )
+ :interfaces
+ {#_:IVariableBase
+  #_{:fields {:name      {:type String}
+            :key       {:type ID}
+            :type      {:type :cue_var_type} ;or like, keyword
+            :starting  {:type :VariableType}}}
+  :IRanged
+  {:fields {:min {:type Float}
+            :max {:type Float}}}}
+
+
  :scalars {
-  :Color {
-          :tag thi.ng.color.core.HSLA
-          :parse :str-to-clj-rec ;good for anything only containing scalar fields and no IFNs or whatever
-          :serialize :clj-rec-to-str }}
- :objects {
-  ; :fields {:id {:type (non-null ID)}
-  ;          ; input Point2D { x: Float y: Float }
-  ;          ; ^ there's float! also:
-;;Int parser handles strings and all kinds of numbers (including non-integers).
-  ;          ; :position {:input {:GridPosition {:x {:type Int} :y {:type Int} }}}
-  ;          ;^ like so? or :fields or like how balance ze map?
-          ;:fields
-          ;{:a {:type Float} :h {:type Float}
-          ; :s {:type Float} :l {:type Float}}
+  :Color {:tag thi.ng.color.core.HSLA
+          :parse     :str-to-hsla ;good for anything only containing scalar fields and no IFNs or whatever
+          :serialize :hsla-to-str}
+  :ManualValue {:description "Send as string and parse ourselves since GraphQL is somehow too dumb for union scalars OR reasonable wrapping types"
+                :parse       :edn-read-str
+                :serialize   :pr-str}}
 
-  :Cue {:description "Single cue definition"
-   :fields {:id {:type String}
-            :name {:type String}
-            :priority {:type Int}
-            :color {:type :Color}
-            :position {:type (list Int)} ;how is non-null enforced?
-            :current_color {:type :Color}
-            :style_color {:type String}
-            :held {:type Boolean}
+ :objects {
+  :Cue
+  {:description "Single cue definition"
+   :fields {:id        {:type String}
+            :key       {:type String}
+            :name      {:type String} ; "However fields that return Non‐Null types will never return the value null if queried."
+            :priority  {:type Int}; so why the fuck does lacinia return stuff with null regardless? argh
+            :color     {:type :Color}
+            :position  {:type (list Int)} ;how is non-null enforced?
+            :held      {:type Boolean} ;prob keep this, will need to handle temp trigger properly...
+            :end_keys  {:type (list ID)}
             :variables {:type (list :Variable)}}}
 
   :Variable
   {:description "Single variable definition - child of a Cue"
-   :fields {:key {:type String}
-            :name {:type String}
-            ; :value {:description "Current value, when cue is active or saved."
-            ;         :type :cue_var_type
-            ;         :resolve :get-active-cue-var}
-            :type {:type :cue_var_type} ;or like, keyword
-            ; :type {:type } ;or like, keyword
-            :min {:type Float}
-            :max {:type Float}}}
-  :Control
-  {:fields {:id {:type Int}
-            :name {:type String}
-            :for_type {:type String} ;or :type :type
-            ; :usable_with {:type (list :cue_var_type)}}}}
-            ; :usable_with {:type :cue_var_type}
-            }}
-  :Snapshot
-  {:fields {:instant {:type Int}
-            :beat {:type Int}
-            :bar {:type Int}
-            :phrase {:type Int}}
-   :tag afterglow.rhythm.MetronomeSnapshot}}
-            ; :usable_with {:type (list :Variable)}}}} ;uhh
+   ; :implements [:IVariableBase]
+   :fields {:key   {:type String}
+            :name  {:type String}
+            :type  {:type :cue_var_type}
+            :start {:type :ManualValue} ;since read-string works for numbers, bools, then just parse color to hsla...
+            :min   {:type :ManualValue}
+            :max   {:type :ManualValue}
+            #_:value #_{:description "Current value, when cue is active or saved."
+                    :type :ManualValue
+                    :resolve :get-active-cue-var}}}
 
-; (({}, {})
-;  ({}, {}))
+  :Fixture
+  {:description "Base definition of fixture."
+   :fields {:name     {:type String}
+            :key      {:type String}
+            :id       {:type Int}
+            :x        {:type Float} ;should just have :position list float...
+            :y        {:type Float}
+            :z        {:type Float}
+            :rotation {:type (list Float) :description "Base rotation. 16 floats - how serialize?"}
+            #_:channels #_{:type (list :Channel)}}}
+  :FixtureState
+  {:description "Calculated values for a fixture"
+   :fields {:id       {:type Int :description "Same as Fixture id: ties FixtureState to Fixture"}
+            :color    {:type :Color}
+            :pan_tilt {:type (list Float)}
+            :lookat   {:type (list Float) :description "A Vector3d-ish representation..."}
+            :dimmer   {:type Float}   ;hmm go int or 0-1?
+            :strobe   {:type Float}}} ;or have these as generic channels?
+  ; :Channel
+  ; {:description "Fixture channel definition. Won't need for just vis stuff but prob later."
+  ;  :fields {:offset   {:type Int}
+  ;           :type     {:type :ChannelType}
+  ;           :color    {:type :ColorType} ;awkward... should maybe be generic data field?
+  ;           :address  {:type Float} ;should just have :position list float...
+  ;           :index    {:type Float}
+  ;           :universe {:type Float}
+  ;           :functions {:type (list :Function)}}}
+  ; :Function
+  ; {:description "Fixture channel function"
+  ;  :fields {:label    {:type String}
+  ;           :type     {:type :FunctionType}
+  ;           :start    {:type Int} ;should just have :position list float...
+  ;           :end      {:type Int}
+  ;           :range    {:type :RangeType}}}
+
+  :Control
+  {:fields {:id       {:type Int}
+            :name     {:type String}
+            :for_type {:type String}
+            #_:usable_with #_{:type :cue_var_type}}}
+  :Snapshot
+  {:fields {:instant  {:type Int}
+            :beat     {:type Int}
+            :bar      {:type Int}
+            :phrase   {:type Int}}
+   :tag afterglow.rhythm.MetronomeSnapshot}
+
+  :VariableState
+  {:fields {:value    {:type String}}} ;this could also work instead of scalar i guess...
+
+  :Shader ;maybe call :ShaderComponent or something then represent a full vert+frag as 2 those + a name or something
+  {:fields {:file_name {:type String}
+            :kind      {:type String} ;vert or frag
+            :text      {:type String}}}}
+
+ :unions
+ {:State
+  {:members [:FixtureState :VariableState]}}
 
  :queries
- {:cue_for_id {:type :Cue
-               :args {:id {:type ID}}
-               :resolve :get-cue-for-id}
-  :cue_var {:type (non-null :Variable)
-            :args {;:cue {:type :Cue} ;parent
-                   :name {:type String :default-value "Level"}}
-            :resolve :get-cue-var}
+ {:cue_for {:type :Cue
+            :args {:id       {:type ID}
+                   :position {:type (list Int)}
+                   :name     {:type String} }
+            :resolve :get-cue-for-id}
+  ; :cue_var {:type (non-null :Variable)
+  ;           :args {;:cue {:type :Cue} ;parent
+  ;                  :name {:type String :default-value "Level"}}
+  ;           :resolve :get-cue-var}
   :sin {:type Float :resolve :get-sin}
-  :control {:type :Control
-            :args {:id {:type ID :default-value "1000"}}
-            :resolve :get-control}
-  ; :cue_var_values {:description "Current values for all active cue vars"
-  ;                  :resolve :get-cue-var-values}
+  ; :control {:type :Control
+  ;           :args {:id {:type ID :default-value "1000"}}
+  ;           :resolve :get-control}
 
   :cues {:type (list :Cue)
-         ; :args {:size {:type Int }
-         ;        :page {:type (list Int) }
-         ;        :offset {:type (list Int) }}
-         ; :args {:size {:type Int :default-value 8}
-         ;        :page {:type (list Int) :default-value [0 0]}
-         ;        :offset {:type (list Int) :default-value [0 0]}}
-         :args {:size {:type Int :default-value 8}
+         :args {:size        {:type Int        :default-value 8}
                 :cell_offset {:type (list Int) :default-value [0 0]}}
-         :resolve :get-cue-grid}}
+         :resolve :get-cue-grid}
+  :fixtures {:type (list :Fixture)
+             :args {:include_heads {:type Boolean :default-value true}}
+             :resolve :get-fixtures
+             :description "Static fixture query - positionm base angle..."}
+  :shaders {:type (list :Shader)
+            :args {:path {:type String :default-value "resources/public/glsl"}}
+            :resolve :get-shaders}
+  ; :code_data {:type String
+  ;             :args {:code {:type (non-null String) :description "Run code get result. Same as the mutation, just avoid side effects"}
+  ;                    }
+  ;             :resolve :eval-code}
+  }
 
  :subscriptions
- {:sins {:type Float
-         :stream :stream-sin}
-  :running {:type Boolean :stream :running}
+ {:sins     {:type Float   :stream :stream-sin}
+  ; :log      {:type :Log_message :stream :stream-log  :description "Get full logs from server."}
+  ; :running  {:type Boolean :stream :running}
+  ; :previous_movement {:type :ManualValue :stream :stream-pre-mo}
+  ; :calculated_values {:type :ManualValue :stream :stream-calculated}
+  :fixture_state {:type (list :FixtureState) :stream :fixture-state
+                  :description "Diffed state changes (color, rot, dimmer etc for visualizer.)"}
+  :live_shader   {:type :Shader  :stream :stream-shaders}
   #_:vars_for_cue #_{:type (list :VariableState)
                  :stream :stream-vars-for-cue}}
 
-:mutations
-{  }}
-
+ :mutations
+ {:eval_code {:type String ;should it return result? blocking issues?
+              :args {:code {:type (non-null String)}}
+              :resolve :eval-code}
+  :afterglow_action {:type String ;should it return result? blocking issues?
+                     :args {:kind {:type (non-null String)}
+                            :action {:type (non-null String)}
+                            :arg {:type (list String)}}
+                     :resolve :afterglow-action}} ;all the actions we'll need to take basically... ugh
+}
