@@ -38,8 +38,18 @@
     [mount.core :refer [defstate]])
   (:import thi.ng.color.core.HSLA))
 
+;; TODO SO we've clearly got a lot of messy bullshit here but some of it's semi-fit for purpose
+;; clean out the very afterglow-specific crap into somewhere else
+;; ideally we make a nice little reusable wrapper thing for async<->graphql
+;; and lacinia/leona in general?
+;;
+;; resolver fns get defined in some other layer so that only that one has to be aware of underlying crap
+;; and map of such are defined in a configuration file, similar to (once cleaned up...) tolglow config shiet
+
 (defn edn->map [path]
-  (-> (io/resource path) slurp edn/read-string))
+  (-> (io/resource path)
+      slurp
+      edn/read-string))
 
 (defn simplify "Converts all ordered maps nested within the map into standard hash maps, and sequences into vectors, which makes for easier constants in the tests, and eliminates ordering problems."
  [m]
@@ -51,7 +61,6 @@
   m))
 
 (defn log [& stuff]
-  ; (clojure.tools.logging/info
   (timbre/info
    "_\n" (clojure.string/join
              "" (pprint/write (simplify stuff) :stream nil)) "_\n")
@@ -139,7 +148,7 @@
      :get-active-cue-var fallback
      :get-sin            now-sin
      :get-shaders        get-shaders
-     :eval-code          set-eval ;run code on server. like repl thing, also to run lots of of basic actions on server...
+     :eval-code          set-eval ;run code on server. like repl thing, also to run lots of of basic actions on server... but obviously not very good in long run hah tho if auth for web why not. maybe can rinse code from java interop and any file etc actions... on other end. wait this is the other end lol
      :afterglow-action   afterglow-action ;map some keys to common actions
      ; :set-afterglow      set-afterglow-action ;more specialized, maybe create an ns aggregating most common actions so dont need to ugh resolve? dunno
      ; could return like "and here's the simplified state change, you apply that to your app-db k?"
@@ -176,15 +185,18 @@
          (recur (deref @finish-promise freq-ms false)))))))
 
 
-(defn get-stream-with-polling [updater]
+(defn get-stream-with-polling "Takes an updater fn, which determines by itself how often to run so bit misleading, as we're not the ones polling.
+                               and takes a promise letting it know when to end/run internal cleanup?
+                               I guess this was my first attempt and get-stream below is tidier and anyways it's the passed fn that determines how to feed us so..."
+  [updater]
  (let [finish  (atom (promise))
-       init    (atom (delay (thread (updater finish))))
-       clients (atom 0)]
+       init    (atom (delay (thread (updater finish)))) ; so here we spawn thread but upon reset not?
+       clients (atom 0)] ; this is the whole reason for the thing I guess? multiple clients not meaning multiple pollings
   (timbre/debug "Create subscription fn.") ;this gets recreated every request when compiled-schema is passed as fn and not finished. seems a bit overkill...
   (fn [ctx {:keys [num]} source-stream] ;ok so a true solution would stuff stuff in ctx or?
    (timbre/debug "Start subscription.")
    (swap! clients inc)
-   (force @init)
+   (force @init) ; well it's nice this only triggers once...
    (let [{:keys [publication]} stream-channel ;; Take the publication.
          subscription (chan)] ; and either way might be a sep event? setting up sub and actually making it stream...
     (sub publication :stream-update subscription) ;; Start to subscribe the publication.
@@ -194,7 +206,7 @@
               (source-stream data) ;; Notify update to client.
               (recur)))
 
-    #(do
+    (fn [] ; better use fn not # also remember can name them!!
       (timbre/debug "Stop subscription.")
       (unsub publication :stream-update subscription)
       (close! subscription)
@@ -245,15 +257,16 @@
 
                        ; solution: make own diff, dont look inside records or bottom-level shit (eg lookat ordinary vec)
                        proper (->> (doall (for [[id {:keys [color] :as fixture}] changes]
-                                          {id (merge {:id id} (dissoc fixture :color)
-                                                     (when (instance? thi.ng.color.core.HSLA color)
-                                                      {:color color}))})) ;shouldnt let this awful workaround stop me from figuring out what ive broken in fade-colors
+                                            {id (merge {:id id}
+                                                       (dissoc fixture :color)
+                                                       (when (instance? thi.ng.color.core.HSLA color)
+                                                         {:color color}))})) ;shouldnt let this awful workaround stop me from figuring out what ive broken in fade-colors
                                   (into {})
                                   (utils/remove-nils))]
-                  (def wtf {:new changes :old old :common same})
-                  (def ouch proper)
-                  (def last-sent @last-sent)
-                  (def new-data new-data)
+                  ; (def wtf {:new changes :old old :common same})
+                  ; (def ouch proper)
+                  ; (def last-sent @last-sent)
+                  ; (def new-data new-data)
                   (when proper ;also prob check whether anyone curr listening
                    ;; with sente we just get a ch each side and roll. 'd be way to go for static basic queries eh
                    (put-topic id (cond-> proper #_changes #_new-data ;wah half colors n shit crapping out serializer, rethink
@@ -307,7 +320,7 @@
 (prefer-method print-method clojure.lang.IDeref java.util.Map)
 ; prob cause of digg bug and thing that varies for eg bloom, sparkle, how fades are broken now... somehow shit turns to java???
 ; or im just talking nonsense
-(defn attach-transformer-map [schema]
+(defn attach-transformer-map [schema] ; obviously silly thing here is while we're serializing should do to something not text right...
  (attach-scalar-transformers schema
   {:str-to-hsla     clr/hsla
    ; :hsla-to-str     deref
@@ -322,8 +335,7 @@
 
 
 (defstate attached-schema "Precompile the GraphQL schema."
- :start (-> (edn->map "graphql/schema.edn") ; will rerun everything each request, for dev purposes
- ; :start #(-> (edn->map "graphql/schema.edn") ; will rerun everything each request, for dev purposes
+ :start (-> (edn->map "graphql/schema.edn") ; will rerun everything each request, for dev purposes. (map vs #fn is diff)
              (attach-resolvers (resolver-map)) ;also contains mutations
              (attach-streamers (streamer-map))
              (attach-transformer-map))
@@ -331,6 +343,7 @@
 ; (mount.core/start #'attached-schema)
 ; (mount.core/stop #'attached-schema)
 
+;; SPEC BULLSHIT FOR TESTING LEONA
 
 (s/def ::none nil?)
 (s/def ::i integer?)
@@ -479,7 +492,7 @@
 ;                {:members (mapv util/clj-name->gql-object-name ~results-specs)})
 ;        (attach-internal ~query-spec ~result-spec (var ~resolver) :queries :doc ~doc)))
 
-(defn get-compiled
+(defn get-compiled "Universal extract compiled schema, since path differs"
  [executor]
  (case executor
   :leona (leona/compile (schema))
@@ -530,23 +543,6 @@
       (lp/inject logger :before ::lp/json-response)))))
 
 
-; (defn attach-interceptors "Merge default interceptors with ours"
-;  [options schema]
-;  (assoc options :interceptors
-;   (into [(interceptor
-;           {:name ::logger
-;            :enter (fn [ctx]
-;                    (timbre/debug (str "XXX" ctx))
-;                    (println (str "XXX" ctx))
-;                    #_ctx) ;these aint workin too good?
-;            :leave (fn [ctx]
-;                    (timbre/debug "XXX" ctx)
-;                    (println "XXX" ctx)
-;                    #_ctx)
-;            :error (fn [& what]
-;                    (timbre/error "something wrong interceptor"))})
-;          #_(pcors/allow-origin {:allowed-origins ["http://localhost*"]})] ;allow all for now
-;         (lp/default-interceptors schema options))))
 
 (defstate graphql-server "Exposes schema more easier + has GraphiQL web repl built in"
  :start  (let [schema (get-compiled :lacinia)
@@ -556,7 +552,7 @@
                service-opts (attach-interceptors options schema)
                pedestal-options {::http/allowed-origins (constantly true)
                                  ::http/allow-credentials true}]
-          (def service-opts service-opts)
+          ; (def service-opts service-opts)
           (-> schema ;we want this to return latest state not regen
               (lp/service-map service-opts)
               (merge pedestal-options)
@@ -579,6 +575,8 @@
                          vars ctx) ;fall back to whatever step didnt fail...
         log
         (json/write-str))))
+
+;; below yanked from some internets when I thought I could jvm js or whatever?
 
 ; (defn class-name->ns-str "Turns a class string into a namespace string (by translating _ to -)"
 ;   [class-name] (clojure.string/replace class-name #"_" "-"))

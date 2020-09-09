@@ -21,7 +21,8 @@
 ;; ************************************************************
 ;; I mean 97% certain geom and his gl will be best to work with...
 ;; ************************************************************
-(defonce ^{:doc "Because we also live-reload shaders, they are stored here."} globals
+(defonce ^{:doc "Because we also live-reload shaders, they are stored here."}
+  globals
  (atom
   {:shader
    {:cone
@@ -118,8 +119,7 @@
 
 
 ; (def texture (.load (three/TextureLoader.) "PerlinNoise2d.png" ; "3d-models/graynoise.png"
-(def texture (.load (three/TextureLoader.)  "3d-models/graynoise.png"
-; (def texture (.load (three/TextureLoader.)  "3d-models/perlin.png"
+(def texture (.load (three/TextureLoader.)  "3d-models/graynoise.png" ;  "3d-models/perlin.png"
                     (fn [tex]
                      (doto tex
                       (j/assoc! :wrapS three/RepeatWrapping
