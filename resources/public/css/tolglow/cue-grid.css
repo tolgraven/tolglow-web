@@ -1,0 +1,153 @@
+/*
+ *   Cue grid
+ *   yesman
+ *
+ */
+
+.cue-grid {
+    top: 0px; /* for sticky to work */
+    z-index: 10;
+    box-shadow: 2px 3px 9px 2px rgb(30, 30, 30, 0.35);
+}
+.cue-grid-gizmos {
+    margin: 3px;
+}
+
+.cue-page {
+  /* display: flex; /1* this prob good idea then wouldnt have to divide the items themselves at all *1/ */
+  /* flex-wrap: row wrap; /1* also remember order prop, could use *1/ */
+  /* display: block !important; /1* ensure rows are separated *1/ */
+
+    text-align: center;
+    /* margin-top: 6px; */
+    margin-bottom: 6px;
+    padding: 2px 2px; /* why is 2/0 even?? */
+    /* border: 1px solid #678; */
+    border: 1px solid rgb(100, 110, 130, 0.5);
+    background-color: #282f32;
+}
+.cue-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  /* margin-right: 2px; /1* here's why *1/ */
+  /* margin-left: 2px; */
+}
+/* .cue-page { /1*  new  *1/ */
+/*   flex: 0 1 auto; */
+/*   display: flex; */
+/*   flex-direction: row; */
+/*   flex-wrap: wrap; */
+/*   /1* display: block !important; /2* ensure rows are separated *2/ *1/ */
+
+/*     text-align: center; */
+/*     /1* margin-top: 6px; *1/ */
+/*     /1* margin-bottom: 6px; *1/ */
+/*     /1* padding: 2px 2px; /2* why is 2/0 even?? *2/ *1/ */
+/*     /1* /2* border: 1px solid #678; *2/ *1/ */
+/*     /1* border: 1px solid rgb(100, 110, 130, 0.5); *1/ */
+/*     background-color: #282f32; */
+/* } */
+
+.cue-cell {
+    /* border: 0.5px solid rgb(70, 80, 90, 0.2); /1* makes -within smaller and not proper centered... *1/ */
+    border: 0.5px solid rgb(40, 40, 40, 0.5); /* makes -within smaller and not proper centered... */
+    /* border: 1.0px solid rgb(70, 80, 90, 0.2); /1* makes -within smaller and not proper centered... *1/ */
+    /* border: 1.0px solid rgb(40, 40, 40, 0.5); /1* makes -within smaller and not proper centered... *1/ */
+    /*/1** not sure what 0.5px border is?  not always 2px / half "1px". pretty nice, when it works... */
+    /* outline: 0.5px solid rgb(30, 30, 30, 0.7); /1* doesnt seem to respect z *1/ */
+    /* margin: 0.5px 0.5px; */
+    /* inner box shadow would be best but no go (-within is in front...) */
+    border-radius: 3px;
+    width: 60px;
+    /* height: 50px; */
+    height: var(--cue-cell-height);
+    /* box-shadow: 4px 3px 10px 3px rgb(50, 50, 30, 0.9); */
+    /* box-shadow: inset 4px 3px 10px 3px rgb(50, 50, 30, 0.9); */
+    /* box-shadow: inset 0px 0px 0px 1px rgb(30, 30, 30, 0.9); */
+}
+
+.cue-cell-within {
+    transition: 0.2s ease-out, background-color 0.4s ease-in-out;
+    min-width: 90%; /*trying to get it to wrap*/
+    border-radius: 3px;
+    height: 100%;
+    font-size: 85%;
+    position: relative; /* needed for z-index */
+    /* top: -0.5px; /1* might be off now was for 0.5px cue-cell border but thats not working anymore... *1/ */
+    /* left: -0.5px; */
+    top: -0.25px; /* might be off now was for 0.5px cue-cell border but thats not working anymore... */
+    left: -0.25px;
+    cursor: pointer;
+    line-height: 1.0;
+
+  flex: 0 1 auto;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+    word-wrap: break-word; /* seems to work with flex */
+    /* but how avoid 1 char break, and overflow? */
+    overflow-wrap: break-word;
+    hyphens: auto;
+    overflow: hidden;
+    /* word-break: break-all; /1* sucks *1/ */
+}
+.cue-cell-within:hover {
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+    z-index: 2;
+    filter: brightness(117%); /* background-color: #ccc !important; /1* ugly I guess but how else override inline? other option is handling hover in code... *1/ */
+    transform: scale(1.07);
+}
+/* .cue-cell-within:hover::after { /*so this works but i mean doesn't select the parent, just creates a new element... *1/ */
+/*     content: ""; */
+/* } */
+.cue-cell-within:active { /* should be used to indicate click-and-drag */
+    box-shadow: 0px 0px 0px 3px rgb(160, 180, 190, 0.85); /*instead of outline, for rounded corners*/
+    z-index: 2;
+    filter: brightness(132%); /* background-color: #fff !important; */
+    transform: scale(1.14);
+}
+.cue-cell-running {
+  border-radius: 30px;
+  /* transform: scaleY(1.020); */
+  /* transform: rotate3d(1, 0, 0, -15deg); */
+}
+/* .cue-cell-running-bg { ;in case get any good ideas... */
+  /* background: #444; */
+/* } */
+.cue-cell-flat { /* for when toggled flat design on */
+  border-radius: 0px !important;
+  border: 0px !important;
+  margin: 0px !important;
+}
+.cue-cell-text {
+  max-width: 82%; /* either this or pad I guess */
+  font-size: 12px; /* one of those things completely fucked desktop vs mobile... */
+  pointer-events: none; /* fucks up drag-leave otherwise */
+}
+.cue-cell-droppable { /* suddenly wont work wtf?? */
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+    z-index: 2;
+}
+.droppable { /* but this does!! */
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+    z-index: 2;
+}
+
+.cue-cell-empty {
+    height: 100%;
+    border-radius: 2px;
+    border: 1px solid rgb(30, 30, 30, 0.40);
+    background-image: radial-gradient(#282f31, #262c30);
+    box-shadow: 4px 3px 10px 3px rgb(40, 40, 50, 0.4);
+    position: relative;
+    top: -0.25px; /* might be off now was for 0.5px cue-cell border but thats not working anymore... */
+    /* left: -0.25px; */
+}
+.cue-cell-empty-saveable:hover {
+    position: relative; /* needed for z-index */
+    z-index: 2;
+    box-shadow: 0px 0px 0px 2px rgb(160, 180, 190, 0.85);
+}
+

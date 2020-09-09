@@ -1,0 +1,135 @@
+/*
+ *   Cue variable control component styling
+ *   but (?) not the stuff needed to incorporate them into
+ *   effects list...
+ */
+
+.control-bg { /* common for controls' main surface/background */
+  background: linear-gradient(rgb(50, 56, 61, 0.85), rgb(33, 36, 40, 0.65));
+  box-shadow: 0px 0px 0px 1px rgb(30, 30, 30, 0.4),
+        inset 0px 1px 4px 1px rgb(30, 30, 30, 0.15);
+  /* border: 1px solid rgb(100, 70, 60, 0.6); /1* hmm breaks stuff *1/ */
+}
+.control-bg > div {
+  transition: 0.1s; /* smooth moves */
+}
+
+.control-color {
+ /* flex: 1 1 auto; */
+ border-radius: 0.5rem;
+ overflow: hidden;
+ height: 34px;
+ opacity: 0.9;
+  /* border: 1px solid rgb(30, 30, 30, 0.5); */
+  box-shadow: 0px 0px 1px 1px rgb(30, 30, 30, 0.5);
+}
+.hue-picker {
+  width: 100% !important;
+}
+.control-color-slider {
+  transition: 0.1s; /* smooth moves */
+  width: 50%;
+}
+.control-xy-pointer {
+  position: relative;
+  background: #222;
+  border: 3px solid rgb(150, 70, 70, 0.7);
+  border-radius: 10px;
+  box-shadow: 0px 0px 3px 3px rgb(150, 70, 60, 0.75),
+        inset 0px 0px 2px 3px rgb(0, 0, 0, 0.2);
+  cursor: initial;
+  z-index: 2;
+}
+.control-xy-pointer-outer {
+  /* background: rgb(190, 70, 70, 0.8); */
+  /* border: 1px solid rgb(120, 50, 40, 0.2); */
+  /* width: 20px; */
+  /* height: 20px; */
+  /* z-index: 1; */
+}
+.control-xy {
+  cursor: crosshair;
+  /* border: 1px solid rgb(30, 30, 30, 0.3); */
+}
+
+.control-slider {
+  flex: 1 1 auto;
+  /* margin-right: 1rem; /1* the thumb hangs out... but only sideways obviously hmm *1/ */
+  margin: 0.2rem 0.6rem; /* the thumb hangs out... but only sideways obviously hmm */
+}
+.control-slider-tick {
+  width: 2px;
+  height: 100%;
+  z-index: 5;
+  background: rgb(30, 30, 30, 0.4);
+}
+.control-slider-fill {
+  background-image: linear-gradient(rgb(160, 75, 65, 0.8), rgb(180, 45, 40, 0.6));
+  /* --base: rgb(160, 75, 65, 0.8); */
+  /* background-image: linear-gradient(var(--base), calc(var(--base))); */
+  /* ^ want to set up auto gradients later on... */
+}
+.control-slider-thumb {
+  border-radius: 2px;
+  background: #222;
+  box-shadow: -7px 0px 13px 1px rgb(80, 40, 30, 0.4),
+               2px 0px  3px 0px rgb(45, 40, 35, 0.4), /* XXX if want a heavy one needs to adjust depending on x or y direction... */
+         inset 0px 0px  5px 2px rgb(10, 10, 10, 0.2);
+}
+
+
+div .control-knob-tick {
+  background: #222;
+  /* width: 8px; /1* maybe be careful about removing properties that make component entirely borked without css tho... *1/ */
+  border-radius: 8px;
+  /* border: 1px solid rgb(var(--faint-border)) */
+  /* border: 1px solid var(--faint-border) */
+  /* border: 1px solid rgb(60, 60, 60, 0.4); */
+  transform: scaleY(1.10);
+  box-shadow: -7px 0px 13px 1px rgb(80, 40, 30, 0.5),
+              -0px 2px  5px 2px rgb(50, 40, 30, 0.4),
+         inset 0px 0px  5px 2px rgb(10, 10, 10, 0.3);
+}
+.control-knob-limit {
+  background: rgb(60, 60, 60, 0.8);
+  width: 2px;
+}
+.control-knob-limit.limit-left {
+  box-shadow:  -2px 0px 7px 2px rgb(30, 40, 70, 0.4),
+               2px -2px  5px 1px rgb(40, 40, 35, 0.3);
+}
+.control-knob-limit.limit-right {
+  box-shadow: 2px 0px 5px 3px rgb(50, 40, 30, 0.2),
+              -2px -4px  6px 2px rgb(40, 40, 35, 0.4);
+}
+.control-knob-bull {
+  background: rgb(30, 30, 30, 1.00);
+  box-shadow: 0px 0px 5px 5px rgb(30, 30, 30, 0.20);
+  z-index: 7;
+  border-radius: 100%;
+}
+
+.control-knob {
+  /* overflow: hidden; */
+  position: relative;
+}
+
+svg.knob {
+  box-shadow: inset 0px 0px 5px 1px rgb(30, 30, 30, 0.15);
+}
+
+circle.knob-pie {
+  fill: transparent;
+  stroke: rgb(160, 75, 65, 0.6);
+}
+
+.hue-horizontal {
+    background: linear-gradient(to right, #dc6464bb 0%, #adab51 17%, #4dad4d 33%, #5cc2c2 50%, #5757bc 67%, #ae62bd 83%, #a25050 100%) !important;
+    filter: brightness(88%), desaturate(20%);
+    /* padding: 9px 2px; */
+    /* margin-top: 9px !important; */
+    /* margin-bottom: 3px !important; */
+}
+.slider-picker :last-child :first-child {
+  margin-top: 0px !important; /* only works with 0px, selects more firsts... */
+}
