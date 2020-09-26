@@ -1,0 +1,28 @@
+{
+  sin
+}
+query cuz {
+  cues(size: 8, cell_offset: [0 0]) {
+    id:key
+    text:name
+    position
+  }
+}
+
+query GetCues($size: Int, $cell_offset: [Int]) {
+  cues(size: $size, cell_offset: $cell_offset) {
+    id:key
+    text:name
+    priority
+    position
+    color
+    variables {
+      name
+      type
+      key
+      min
+      max
+      start
+    }
+  }
+}
