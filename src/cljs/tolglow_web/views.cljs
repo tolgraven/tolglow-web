@@ -572,22 +572,22 @@
 (defn graphql-view []
  (let [subs (:subscriptions (:re-graph.internals/default (db/get [:re-graph])))
        sin (rf/subscribe [:get :ql :data :sins])]
-  [:div [:div
-   [:div>button.zmdi.zmdi-plus
-    {:on-click #(events/ql-subscribe "{ sins }" {} :sinner)
-     :disabled (when (seq subs) true)}]
-   [:div>button.zmdi.zmdi-minus
-    {:on-click #(events/ql-unsubscribe :sinner)
-     :disabled (when-not (seq subs) true)}] ]
-  [:div.flex-center {:style {:justify-content :space-around}}
-   [:div.slow-transition-child.
-    [slider sin (fn [& _]) {:min -1 :max 1} :y]] ]
-  [ui/formatted-data "re-graph" subs]
+  [:div
+   [ui/toggle [:show-graphql]]
+   [:div
+    [:div>button.zmdi.zmdi-plus
+     {:on-click #(events/ql-subscribe "{ sins }" {} :sinner)
+      :disabled (when (seq subs) true)}]
+    [:div>button.zmdi.zmdi-minus
+     {:on-click #(events/ql-unsubscribe :sinner)
+      :disabled (when-not (seq subs) true)}] ]
+   [:div.flex-center {:style {:justify-content :space-around}}
+    [:div.slow-transition-child
+     [slider sin (fn [& _]) {:min -1 :max 1} :y]]]
+   [ui/formatted-data "re-graph" (db/get [:re-graph])]
    [:div (str @sin)]
    [:div (str subs)]
-  [ui/toggle {}
-   (rf/subscribe [:macro :is-selecting])
-   #(db/toggle [:macro :is-selecting])] ]))
+   [ui/toggle [:macro :is-selecting]] ]))
 
 
 (defn header-bar []
@@ -603,18 +603,45 @@
 (defn nav-bar []
  [:div.nav-bar
   [:nav.naver.flex-center
-  [:a "home"] [:a "cfg"] [:a "repl"] [:a "ide"] [:a "log"] [:a "visualize"] [:a "patch"]
-  [:div]
-  [:div {:on-click #(db/toggle [:options :display :flat])} "flat"]
-  [:div.show-control.flex-center {:style {:margin-left :auto}}
-   (let [[label class-suffix] (if (db/get [:show :started])
-                               ["started" "success"] ["stopped" "danger"])]
-    [:button
-     {:style {:font-size "80%" :opacity 0.6 }
-      ; :class (str "btn-sm btn-" class-suffix)
-      :on-click #(db/toggle [:show :started])}
-     label])]]
+   [:a "home"] [:a "cfg"] [:a "repl"] [:a "ide"] [:a "visualize"] [:a "patch"]
+   ; [:div "/ "]
+   ; [:div {:on-click #(db/toggle [:options :display :flat])} "flat"]
+   [:div.show-control.flex-center {:style {:margin-left :auto}}
+    (let [started? (rf/subscribe [:get :show :started])
+          [label class-suffix] (if @started?
+                                ["started" "success"] ["stopped" "danger"])]
+     [:button
+      {:style {:font-size "80%" :opacity 0.6 }
+       ; :class (str "btn-sm btn-" class-suffix)
+       ; :on-click #(db/toggle [:show :started])}
+       :on-click #(rf/dispatch [:code @(rf/subscribe [:get :commands (if @started? :stop :start) :cmd]) :running true])}
+      label])]]
    [:div.nav-bar-fill]])
+; (rf/dispatch [:code @(rf/subscribe [:get :commands (if @started? :stop :start) :cmd])])
+
+
+
+(defn quil [id]
+ (let [show (rf/subscribe [:get :quil :show])]
+  (r/create-class
+   {:display-name (str "Quil " id)
+    :component-did-mount (fn [this] ;we must wait until component mounts before invoking defsketch
+                          (rf/dispatch [:quil :init]) ;fix id here too...
+                          (when-not show
+                           (rf/dispatch [:quil :stop])))
+    :reagent-render
+    (fn []
+     [:div.quil-section
+      [ui/toggle {} show ;this is double-triggering event. investigate.
+       #(rf/dispatch [:quil %])] ;this both hides AND pauses sketch - otherwise it's always using resources.
+      [:div.quil-container
+       {:style {:overflow-x "scroll"}}
+       [:div
+        {:id id
+         :style {:visibility (if @show :visible :hidden)
+                 :max-height (when-not @show "2rem")}}]]])})))
+
+
 
 (defn ui []
  [:div [:title "CUE-db"]

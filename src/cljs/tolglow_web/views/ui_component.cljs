@@ -22,35 +22,157 @@
 ;for component - where val is fetched, and changes dispatched to.
 ;But also overridable when divergance or fancier behavior required.
 ;some kinda deep-merge anyways
-;
-(defn toggle "A nice little (but not native checkbox little) toggle"
- [attrs model on-change]
+
+(defn log "Show an expandable log thingy. Prob dumb here but good base for any sorta feed thingy I guess!"
+  [options {:keys [messages] :as content}]
+ (let [time-format (formatters :hour-minute-second)
+       table-ref (atom nil) ; scroll (r/atom nil)
+       log-line (fn [{:keys [time level title message] :as msg}]
+                  [:tr.log-message
+                   [:td (unparse time-format time)]
+                   [:td {:class (str "message " (name level))} (name level)]
+                   [:td title]
+                   [:td.message #_{:style {:position :relative :left "1em"}} (str message)]])]
+  (r/create-class
+   {:display-name "Log"
+    :component-did-update (fn [this] ; (r/dom-node this)
+                           ; (println "Log updated!" (.-scrollHeight @table-ref))
+                           ; (reset! scroll (.-scrollHeight @table-ref))
+                           (set! (.-scrollTop @table-ref) (.-scrollHeight @table-ref))) ;resort to this since :scroll-top @ratom in the actual element doesnt work...
+    :reagent-render
+    (fn []
+     [:div.log-container
+      [minimize [:options :display :log]] ;this also needs to send an event to scroll-top the fucker...
+      [:div.log-inner {:ref (fn [el] (reset! table-ref el))
+                       :style {:max-height (if (:minimized @options) "1.2em" "20em")}
+                       ; :scroll-top @scroll ;wonder why this doesnt work
+                       ; :style {:max-height @scroll}
+                       }
+       [:table>tbody.log
+        (for [msg (map messages (sort (keys messages))
+                       #_(if (:minimized @options) ;upside-down?
+                           [(count messages)]
+                           (sort (keys messages))))]
+         ^{:key (str (:id msg))}
+         [log-line msg])]]])})))
+
+
+(defn modal "Container for anything modal, taking care of common stuff"
+ [component & [on-outside-click]]
  (let []
-  [:div.toggle.checkbox
-   { :style {:margin "5px 5px"
-             :width 25 :height 22
-             :background "#444"
-             :position :relative
-             :z-index 5
-             :border "2px solid #333"
-             :border-radius 8}
-    ; :on-click (fn [v] (on-change (boolean v)))}
-    ; :on-click (fn [v] (on-change (not @model)))}
-    :on-click #(do (print @model)
-                   (on-change (if-not (seq? @model) (not @model))))} ;try to force bool
-   [:div "o"]
-   [:div.slide-in-left-hidden.hidden ;checkbox-inner-hidden
-    {:class (if @model "slide-in-left-visible visible" #_"checkbox-inner-visible")
-     :style {:background "#46b"
-             :width "80%" :height "74%"
-             :border-radius 5
-             :position :absolute
-             :z-index 0
-             :top "13%" #_:left #_"10%"}}]]))
+  (db/set [:modal] true)
+  [:div#modal-container
+   [:div#modal-bg {:on-click on-outside-click
+                   :style {:position :fixed
+                           :width "100%" :height "100%" :top 0 :left 0
+                           :background "rgb(30, 30, 30, 0.5)"}}]
+   [:div#modal {:class (when (db/get [:modal]) "modal-is-open")}
+    component]]))
 
-(defn button [attrs model on-change]
- )
+(defn hud-modal "Show more info about a specific HUD message"
+ [] ;doesnt really have to be modal but wanted to implement that, so...
+ (if-let [msg @(rf/subscribe   [:hud :modal])]
+  (let [to-close #(rf/dispatch [:hud :modal :remove])]
+   [modal [:div.hud-modal-main
+           {:class (str "hud-message " (name (:level msg)))}
+           [:h3  (:title   msg)]
+           [:p   (str (:message msg))]
+           [:p   (str (:time    msg))]
+           [ui/close to-close]]
+    to-close])
+  (db/set [:modal] false))) ;eww gross
 
+; (rf/dispatch [:diag/new :error "Some info" "much further info..."])
+; (rf/dispatch [:diag/new :error "Title" "veryerysdbhafjasbdfhjasdbfhj ashjdfbahsdjf adjfhsabdfjhsdabfja asdhjfashdfsajdhfg hkasdfh"])
+
+
+(defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level" []
+ (let [to-show @(rf/subscribe [:hud])
+       one-msg (fn [{:keys [level title message time actions id]}]
+                (let [class (str "hud-message " (name level))]
+                 [:div.hud-message
+                  {:class class
+                   :style {:position :relative}
+                   :on-click #(rf/dispatch (or (:on-click actions)
+                                               [:hud :modal id])) }
+                  [:span title]
+                  [ui/close (fn [e]
+                             (.stopPropagation e) ;it's causing a click on hud-message as well...
+                             (rf/dispatch [:diag/unhandled :remove id]))]]))]
+  [:div.hud.hidden
+   {:class (when (seq to-show) "visible")}
+   [ui/flip-move
+    {:class "hud-messages"
+     :duration 200 :staggerDelayBy 20 :staggerDurationBy 30}
+    (for [msg to-show]
+     [one-msg msg])]]))
+
+
+(defn toggle "A nice little (but not native checkbox little) toggle"
+ ([model-path]
+  ; (let [on-change #(db/toggle model-path)
+  ; (let [on-change #(rf/dispatch (into [:set] model-path))
+  (let [on-change #(rf/dispatch [:set model-path %])
+        model (rf/subscribe (into [:get] model-path))]
+  [toggle {} model on-change]))
+ ([model on-change]
+  [toggle {} model on-change])
+ ([attrs model on-change] ;this is double triggering...
+  (let []
+   [:label.toggle-switch
+    (util/deep-merge
+     {:style {:margin "2px 2px"
+              :width  "1.5rem"
+              :height "1.3rem"
+              :z-index 2} }
+     attrs)
+    [:input {:type :checkbox :default-checked @model
+             :on-click (fn [e] ;ok, only triggers once now
+                 ; (.preventDefault e) ;broke it! :O what
+                 (on-change (not @model)))}]
+    [:span.toggle-slider.round]
+    #_"label"])))
+;then build radio version as well for some settings...
+
+(defn button [attrs model on-change])
+
+
+(defn quick-wrapper
+ [f model-path & [attrs]]
+ (let [on-change #(db/toggle model-path)
+       model (rf/subscribe (into [:get] model-path))]
+  [f {} model on-change]))
+
+
+(defn material-toggle
+ [model-path [on-state off-state & [prefix]]]
+ (let [model (rf/subscribe (into [:get] model-path))]
+  [:i.zmdi
+   {:class (str "zmdi-"
+                (when prefix (str prefix "-"))
+                (if @model on-state off-state))
+    :style {:margin "0.1em 0.2em"}
+    ; :style {:margin "0.2em 0.4em"}
+    :on-click #(db/toggle model-path)}]))
+
+(defn minimize [model-path]
+ [material-toggle
+  (into model-path [:minimized])
+  ["maximize" "minimize" "window"]])
+
+(defn close [on-click]
+ [:i.zmdi.zmdi-close
+  {:style {:position :absolute
+           ;:right "0.4rem" :top "0.2rem"
+           :right -5 :top -5
+           :background "rgb(30, 30, 30, 0.7)"
+           :color "#edc"
+           :border-radius "50%"
+           :padding "0.1em"
+           :font-size "1.0rem"
+           ; :line-height "1em"
+           }
+   :on-click on-click}])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
@@ -78,6 +200,101 @@
    ; :on-touch-move  (dispatcher :end)
    ; :on-touch-end   (dispatcher :end)
    :draggable      (if id true)})) ;all are valid drop targets, but empties cant be dragged...
+
+
+(defn- xy-in-rect [e dimension rect]
+ (let [m {:x (- (.-clientX e) (.-left rect)) ;XXX shouldnt do unneccessary work tho
+          :y (- (.-clientY e) (.-top rect))}]
+  (map m dimension))) ;ok so now will return vec even for one dim
+
+
+(defn mouse-handlers "Handle mouse events for xy/x/y control (fix so generic)"
+ [on-change var-spec direction] ;[:x] [:y] [:x :y]...
+  (let [s (r/atom {})
+        run (fn [e]
+             (.preventDefault e)
+             (when (:pressed? @s)
+              (let [now (xy-in-rect e direction (:rect @s))]
+               (when (not= now (:was @s)) ;filters out loads of duplicate events...
+                (swap! s assoc :was now)
+                (let [size (map {:x (.-width  (:rect @s))
+                                 :y (.-height (:rect @s))} direction)
+                      minmax (mapv var-spec [:min :max])
+                      scaled (if (= 1 (count now)) ;single element vector
+                              (as-> (cmath/map-interval-clamped
+                                     (first now) [0 (first size)]
+                                     minmax)
+                               res (if (= direction [:y])
+                                    (- (:max var-spec) res)
+                                    res)) ;flip when :y, dirty...
+                              (map #(cmath/map-interval-clamped
+                                     %1 [0 %2] %3)
+                                   now size minmax))] ;might want a further check in case int-constrained?
+                 (on-change scaled))))))
+        end (fn [e]
+             (when (:pressed? @s)
+              (run e)) ;do we always wanna run one last time?
+             (reset! s {}))
+        start (fn [e] ;need some other way than checking .-buttons, bc touch...
+               (.preventDefault e)
+               (when
+                ; true
+                (or (= (.-buttons e) 1) (= (.-type e) "touchstart"))
+                (swap! s assoc :pressed? true
+                               :rect (util/bounding-rect e)) ;cache rect bc loads of event spam...
+                (util/on-move-then-cleanup run end) ;test, works fine for knob just attaching this right away...
+                #_(run e)))
+        ; enter (fn [e] (when (:rect @s) (start e))) ;dont really need this anymore?
+        out (fn [e]
+             (when (:pressed? @s)
+              (util/on-move-then-cleanup run end)))] ;on purpuse we're sending end as cleanup?
+    {:on-mouse-down   start
+     :on-mouse-up     end
+     ; :on-mouse-leave  out ;-leave seems better than -out?  ;XXX if exit element, then exit window, then mouse up, when re-enter still running...
+     :on-mouse-move   run
+     ; :on-mouse-enter enter ;use -enter not -over, dont have to deal with spam...
+     ; :on-mouse-out   out
+     ; :on-drag-start   start ;causing NaN...
+     :on-touch-start  start ;not working with iphone hmm...
+     ; :on-touch-leave  out ;no such thing
+     ;"calling preventDefault() on a touchstart or the first touchmove event of a series prevents the corresponding mouse events from firing"
+     ;but im not calling it...
+     :on-touch-move   run
+     :on-touch-end    end
+     :on-touch-cancel end
+     })) ;keep -move registered or if end up with tons better to remove listener? not that it gets invoked unless above but...
+
+
+;also fix something modal/popout, have 2-3 different pickers to switch between etc
+(defn color-picker [model on-change & options]
+ (let [on-slider (fn [k] (fn [e]
+                          (->> e .-target .-value (* 0.01)
+                               (assoc @model k)
+                               on-change)))
+       grad (fn [k]
+             (str "linear-gradient(to right, "
+                  @(-> @model (assoc k 0.1)  clr/as-css) ","
+                  @(-> @model (assoc k 0.85) clr/as-css) ")"))
+      get-slider (fn [k]
+                  [:input.control-color-slider
+                   {:type :range :min 0 :max 100 :value (* 100 (k @model))
+                    :on-change (on-slider k)
+                    :style {:background-image (grad k)
+                            :height 16}}])]
+  (fn []
+   [:div.control-color ;.control-bg
+   {:style {}}
+   [ui/hue-picker ; [ui/slider-color-picker [ui/circle-picker [ui/chrome-picker
+    {:color @(clr/as-css @model)
+     ; :pointer (r/reactify-component (fn [] [:div "[]"]))
+     :onChange (fn [color e]
+                (->> (.-hex color)
+                     clr/css
+                     clr/hue
+                     (assoc @model :h)
+                     on-change))}]
+   [get-slider :l] [get-slider :s]])))
+
 
 
 (defn input-text "Returns markup for a basic text input label"
