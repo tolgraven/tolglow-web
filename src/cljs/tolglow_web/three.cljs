@@ -20,8 +20,10 @@
             [re-frame.core :as rf]))
 ;; ************************************************************
 ;; I mean 97% certain geom and his gl will be best to work with...
+;; so skip all this crap bleh it randomly just broke now anyways
 ;; ************************************************************
-(defonce ^{:doc "Because we also live-reload shaders, they are stored here."} globals
+(defonce ^{:doc "Because we also live-reload shaders, they are stored here."}
+  globals
  (atom
   {:shader
    {:cone
@@ -105,6 +107,10 @@
      (j/update! :position j/call :set x y z)
      (.lookAt (three/Vector3. xl yl zl)))))
 
+(defn get-controls [camera renderer];this is stealing arrow keys even when not selected...
+  (doto (orbit/OrbitControls. camera (.-domElement renderer)) ; suddenly complaining "not a constructor" but three ver is pinned and shit??
+    (j/update! :target j/call :set 0 2 0)))
+
 
 (defn depth-texture-target [[w h]]
  (doto (three/WebGLRenderTarget. w h)
@@ -118,9 +124,11 @@
 
 
 ; (def texture (.load (three/TextureLoader.) "PerlinNoise2d.png" ; "3d-models/graynoise.png"
-(def texture (.load (three/TextureLoader.)  "3d-models/graynoise.png"
-; (def texture (.load (three/TextureLoader.)  "3d-models/perlin.png"
+(def texture (.load (three/TextureLoader.)  "3d-models/graynoise.png" ;  "3d-models/perlin.png"
                     (fn [tex]
+                     (doto tex
+                      (j/assoc! :wrapS three/RepeatWrapping
+                                :wrapT three/mirroredRepeatWrapping))
                      (swap! globals assoc :fog-texture tex))))
 
 (defn volu-spot-material [& {:keys [camera d-target]}] ;or just fragment-shader etc (dont make new obj)
@@ -148,8 +156,8 @@
          {:uniforms        uniforms
           :vertexShader    vertex-shader
           :fragmentShader  fragment-shader
-          :side		          three/DoubleSide
-          :blending	       three/AdditiveBlending ;auto get rid of black. but hmm...
+          ; :side		          three/DoubleSide
+          ; :blending	       three/AdditiveBlending ;auto get rid of black. but hmm...
           :transparent     true
           :depthWrite      false}))] ;this should ensure were not incl in depth texture right??
   material))
@@ -511,7 +519,9 @@
 ; so can easy play around with hot reload
 ; def want shader as a render target...  esp with live reload stuff (and supporting params etc)
 
-(defn three-comp "React component holding Three.js visualizer renderer. Takes desired canvas width (caps at window width), aspect ratio, and fixture data"
+(defn three-comp "React component holding Three.js visualizer renderer.
+                  Takes desired canvas width (caps at window width), aspect ratio, and fixture data.
+                  SHOULD: not be an ugly monster. Dunno how that would be achieved hah."
  [w ratio]
  (log "Creating three component")
  (let [s (atom {:req-size [w (/ w ratio)]})
@@ -538,8 +548,7 @@
          (start-render []
           (let [delta (.getDelta (:clock @s))]
            (.update (:controls @s)) ; required if controls.enableDamping or controls.autoRotate are set to true
-           ; XXX best way to throttle when little or nothing happening?
-           ; but also like no lights on just wait for something to happen...
+           ; XXX best way to throttle when little or nothing happening?  but also like no lights on just wait for something to happen...
 
            (update-each-frame (:camera @s) (:scene @s) @(:spotlights @s) (:started-at @s))
            (render-depth s) ;try sep what's specific to viz
@@ -551,7 +560,8 @@
 
          (playback! [state] ;play pause etc fix
           (when-not (= state (:running @s)) ;skip duplicate requests
-           (let [fixture-ch @(rf/subscribe [:get :ch :fixtures]) #_(chan (sliding-buffer 100))
+           (let [fixture-ch @(rf/subscribe [:get :ch :fixtures]) ; still cant decide whether bril or crap. def crap since now subbing here. but something about it is smart i just know it  #_(chan (sliding-buffer 100))
+                 ;; maybe we just pass down ch to comp. still, stashing chan in db is just kool.
                  shader-ch  @(rf/subscribe [:get :ch :shaders]) #_(chan (sliding-buffer 4))] ;should be enough? got a 1024 msg even with this (!??)
             (case state
             :play (do (log "Start playback!")
@@ -581,10 +591,7 @@
                   :camera   (get-camera :position [0 5 -6])
                   :scene    (get-scene))
            (swap! s assoc
-                  :controls  (doto (orbit/OrbitControls. ;this is stealing arrow keys even when not selected...
-                                    (:camera @s)
-                                    (.-domElement (:renderer @s)))
-                              (j/update! :target j/call :set 0 2 0))
+                  :controls  (get-controls (:camera @s) (:renderer @s))
                   :clock     (three/Clock.)
                   :started-at (.now js/Date.)
 
@@ -617,8 +624,8 @@
           (doto js/window
            (.removeEventListener  "resize" on-size))
           (.dispose (:renderer @s)) ;dunno if needed but. also camera, scene?
-          (.dispose (:scene @s))
-          (.dispose (:controls @s)))
+          (.dispose (:controls @s))
+          (.dispose (:scene @s)))
 
          (r-render [w ratio]  (log "Render div THREE")
           (swap! s assoc :req-size [w (/ w ratio)])
